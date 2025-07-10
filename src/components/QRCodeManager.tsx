@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQRCodes } from '../hooks/useQRCodes';
-import { QRCode, QRAnalytics } from '../types';
+import { QRCode, QRAnalytics, QRAnalyticsSummary } from '../types';
 import { 
   Plus, 
   Edit2, 
@@ -13,18 +13,22 @@ import {
   BarChart3,
   ExternalLink,
   Copy,
-  Download
+  Download,
+  Palette
 } from 'lucide-react';
 import QRCodeLib from 'qrcode';
+import { QRAnalyticsDashboard } from './QRAnalyticsDashboard';
+import { QRCustomizer } from './QRCustomizer';
 
 export const QRCodeManager: React.FC = () => {
-  const { qrCodes, addQRCode, updateQRCode, deleteQRCode, getQRAnalytics, generateShortCode } = useQRCodes();
+  const { qrCodes, addQRCode, updateQRCode, deleteQRCode, getQRAnalytics, getQRAnalyticsSummary, updateQRCustomization, generateShortCode } = useQRCodes();
   
   const [editingQR, setEditingQR] = useState<QRCode | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState<string | null>(null);
-  const [analytics, setAnalytics] = useState<QRAnalytics[]>([]);
+  const [analyticsSummary, setAnalyticsSummary] = useState<QRAnalyticsSummary | null>(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+  const [showCustomizer, setShowCustomizer] = useState<QRCode | null>(null);
 
   const [qrForm, setQRForm] = useState({
     name: '',
@@ -82,8 +86,8 @@ export const QRCodeManager: React.FC = () => {
   const handleShowAnalytics = async (qrCodeId: string) => {
     setLoadingAnalytics(true);
     try {
-      const data = await getQRAnalytics(qrCodeId);
-      setAnalytics(data);
+      const summary = await getQRAnalyticsSummary(qrCodeId);
+      setAnalyticsSummary(summary);
       setShowAnalytics(qrCodeId);
     } catch (error) {
       console.error('Failed to load analytics:', error);
@@ -92,15 +96,22 @@ export const QRCodeManager: React.FC = () => {
     }
   };
 
-  const generateQRCodeImage = async (qr: QRCode): Promise<string> => {
+  const generateQRCodeImage = async (qr: QRCode, customization?: any): Promise<string> => {
     const qrUrl = `${window.location.origin}/qr/${qr.shortCode}`;
+    const custom = customization || qr.customization || {
+      foregroundColor: '#000000',
+      backgroundColor: '#FFFFFF',
+      size: 200,
+      margin: 2
+    };
+    
     try {
       return await QRCodeLib.toDataURL(qrUrl, {
-        width: 200,
-        margin: 2,
+        width: custom.size || 200,
+        margin: custom.margin || 2,
         color: {
-          dark: '#000000',
-          light: '#FFFFFF'
+          dark: custom.foregroundColor || '#000000',
+          light: custom.backgroundColor || '#FFFFFF'
         }
       });
     } catch (error) {
@@ -111,7 +122,7 @@ export const QRCodeManager: React.FC = () => {
 
   const downloadQRCode = async (qr: QRCode) => {
     try {
-      const dataUrl = await generateQRCodeImage(qr);
+      const dataUrl = await generateQRCodeImage(qr, qr.customization);
       const link = document.createElement('a');
       link.download = `qr-${qr.shortCode}.png`;
       link.href = dataUrl;
@@ -125,13 +136,17 @@ export const QRCodeManager: React.FC = () => {
     navigator.clipboard.writeText(text);
   };
 
-  const getAnalyticsSummary = (qrId: string) => {
-    const qrAnalytics = analytics.filter(a => a.qrCodeId === qrId);
-    const totalScans = qrAnalytics.length;
-    const countries = [...new Set(qrAnalytics.map(a => a.country).filter(Boolean))];
-    const devices = [...new Set(qrAnalytics.map(a => a.deviceType).filter(Boolean))];
-    
-    return { totalScans, countries: countries.length, devices: devices.length };
+  const handleCustomizeQR = (qr: QRCode) => {
+    setShowCustomizer(qr);
+  };
+
+  const handleSaveCustomization = async (qr: QRCode, customization: any) => {
+    try {
+      await updateQRCustomization(qr.id, customization);
+      setShowCustomizer(null);
+    } catch (error) {
+      console.error('Failed to save customization:', error);
+    }
   };
 
   return (
@@ -307,6 +322,13 @@ export const QRCodeManager: React.FC = () => {
                   </div>
                   <div className="flex items-center space-x-2">
                     <button
+                      onClick={() => handleCustomizeQR(qr)}
+                      className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+                      title="Customize QR Code"
+                    >
+                      <Palette size={16} />
+                    </button>
+                    <button
                       onClick={() => downloadQRCode(qr)}
                       className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
                       title="Download QR Code"
@@ -359,16 +381,12 @@ export const QRCodeManager: React.FC = () => {
       {/* Analytics Modal */}
       {showAnalytics && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
-                <h3 className="text-xl font-semibold text-gray-800 flex items-center">
-                  <BarChart3 className="w-5 h-5 mr-2" />
-                  QR Code Analytics
-                </h3>
                 <button
                   onClick={() => setShowAnalytics(null)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors ml-auto"
                 >
                   <X size={20} />
                 </button>
@@ -379,67 +397,27 @@ export const QRCodeManager: React.FC = () => {
                 <div className="flex items-center justify-center py-12">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
                 </div>
+              ) : analyticsSummary ? (
+                <QRAnalyticsDashboard 
+                  summary={analyticsSummary} 
+                  qrName={qrCodes.find(qr => qr.id === showAnalytics)?.name || 'QR Code'}
+                />
               ) : (
-                <div className="space-y-6">
-                  {/* Analytics Summary */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-pink-50 rounded-xl p-4 border border-pink-200">
-                      <h4 className="text-sm font-medium text-gray-600 mb-1">Total Scans</h4>
-                      <p className="text-2xl font-bold text-pink-600">{analytics.length}</p>
-                    </div>
-                    <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
-                      <h4 className="text-sm font-medium text-gray-600 mb-1">Countries</h4>
-                      <p className="text-2xl font-bold text-blue-600">
-                        {[...new Set(analytics.map(a => a.country).filter(Boolean))].length}
-                      </p>
-                    </div>
-                    <div className="bg-green-50 rounded-xl p-4 border border-green-200">
-                      <h4 className="text-sm font-medium text-gray-600 mb-1">Device Types</h4>
-                      <p className="text-2xl font-bold text-green-600">
-                        {[...new Set(analytics.map(a => a.deviceType).filter(Boolean))].length}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Recent Scans */}
-                  <div>
-                    <h4 className="text-lg font-semibold text-gray-800 mb-4">Recent Scans</h4>
-                    {analytics.length === 0 ? (
-                      <p className="text-gray-500 text-center py-8">No scans recorded yet.</p>
-                    ) : (
-                      <div className="space-y-3 max-h-96 overflow-y-auto">
-                        {analytics.slice(0, 50).map((scan) => (
-                          <div key={scan.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                            <div className="flex-1">
-                              <div className="flex items-center space-x-4">
-                                <div>
-                                  <p className="text-sm font-medium text-gray-800">
-                                    {scan.city && scan.country ? `${scan.city}, ${scan.country}` : scan.country || 'Unknown Location'}
-                                  </p>
-                                  <p className="text-xs text-gray-500">
-                                    {scan.deviceType} • {scan.operatingSystem}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-sm text-gray-600">
-                                {new Date(scan.scannedAt).toLocaleDateString()}
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                {new Date(scan.scannedAt).toLocaleTimeString()}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <p className="text-gray-500 text-center py-8">Failed to load analytics data.</p>
               )}
             </div>
           </div>
         </div>
+      )}
+
+      {/* QR Customizer Modal */}
+      {showCustomizer && (
+        <QRCustomizer
+          qrUrl={`${window.location.origin}/qr/${showCustomizer.shortCode}`}
+          initialCustomization={showCustomizer.customization}
+          onSave={(customization) => handleSaveCustomization(showCustomizer, customization)}
+          onClose={() => setShowCustomizer(null)}
+        />
       )}
     </div>
   );

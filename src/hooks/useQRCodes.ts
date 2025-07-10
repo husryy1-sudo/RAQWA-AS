@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { QRCode, QRAnalytics } from '../types';
+import { QRCode, QRAnalytics, QRAnalyticsSummary, QRCustomization } from '../types';
 
 export const useQRCodes = () => {
   const [qrCodes, setQRCodes] = useState<QRCode[]>([]);
@@ -37,13 +37,21 @@ export const useQRCodes = () => {
 
   const addQRCode = async (qrCode: Omit<QRCode, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
+      const defaultCustomization = {
+        foregroundColor: '#000000',
+        backgroundColor: '#FFFFFF',
+        size: 200,
+        margin: 2
+      };
+
       const { data, error } = await supabase
         .from('qr_codes')
         .insert([{
           name: qrCode.name,
           short_code: qrCode.shortCode,
           destination_url: qrCode.destinationUrl,
-          is_active: qrCode.isActive
+          is_active: qrCode.isActive,
+          customization: defaultCustomization
         }])
         .select()
         .single();
@@ -142,10 +150,132 @@ export const useQRCodes = () => {
         deviceType: item.device_type,
         operatingSystem: item.operating_system,
         userAgent: item.user_agent,
+        browser: item.browser,
         scannedAt: item.scanned_at
       }));
     } catch (err) {
       throw new Error(err instanceof Error ? err.message : 'Failed to fetch analytics');
+    }
+  };
+
+  const getQRAnalyticsSummary = async (qrCodeId: string): Promise<QRAnalyticsSummary> => {
+    try {
+      const { data, error } = await supabase
+        .from('qr_analytics')
+        .select('*')
+        .eq('qr_code_id', qrCodeId);
+
+      if (error) throw error;
+
+      const analytics = data || [];
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+      // Calculate summary statistics
+      const totalScans = analytics.length;
+      const todayScans = analytics.filter(a => new Date(a.scanned_at) >= today).length;
+      const weekScans = analytics.filter(a => new Date(a.scanned_at) >= weekAgo).length;
+      const monthScans = analytics.filter(a => new Date(a.scanned_at) >= monthAgo).length;
+
+      // Top countries
+      const countryCount = analytics.reduce((acc, a) => {
+        if (a.country) {
+          acc[a.country] = (acc[a.country] || 0) + 1;
+        }
+        return acc;
+      }, {} as Record<string, number>);
+      const topCountries = Object.entries(countryCount)
+        .map(([country, count]) => ({ country, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+
+      // Top devices
+      const deviceCount = analytics.reduce((acc, a) => {
+        if (a.device_type) {
+          acc[a.device_type] = (acc[a.device_type] || 0) + 1;
+        }
+        return acc;
+      }, {} as Record<string, number>);
+      const topDevices = Object.entries(deviceCount)
+        .map(([device, count]) => ({ device, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+
+      // Top browsers
+      const browserCount = analytics.reduce((acc, a) => {
+        if (a.browser) {
+          acc[a.browser] = (acc[a.browser] || 0) + 1;
+        }
+        return acc;
+      }, {} as Record<string, number>);
+      const topBrowsers = Object.entries(browserCount)
+        .map(([browser, count]) => ({ browser, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+
+      // Scans by date (last 30 days)
+      const scansByDate: Array<{ date: string; scans: number }> = [];
+      for (let i = 29; i >= 0; i--) {
+        const date = new Date(today.getTime() - i * 24 * 60 * 60 * 1000);
+        const dateStr = date.toISOString().split('T')[0];
+        const scans = analytics.filter(a => 
+          a.scanned_at.startsWith(dateStr)
+        ).length;
+        scansByDate.push({ 
+          date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), 
+          scans 
+        });
+      }
+
+      // Last scan time
+      const lastScanTime = analytics.length > 0 
+        ? analytics.sort((a, b) => new Date(b.scanned_at).getTime() - new Date(a.scanned_at).getTime())[0].scanned_at
+        : undefined;
+
+      return {
+        totalScans,
+        todayScans,
+        weekScans,
+        monthScans,
+        topCountries,
+        topDevices,
+        topBrowsers,
+        scansByDate,
+        lastScanTime
+      };
+    } catch (err) {
+      throw new Error(err instanceof Error ? err.message : 'Failed to fetch analytics summary');
+    }
+  };
+
+  const updateQRCustomization = async (id: string, customization: QRCustomization) => {
+    try {
+      const { data, error } = await supabase
+        .from('qr_codes')
+        .update({ customization })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      const transformedData = {
+        id: data.id,
+        name: data.name,
+        shortCode: data.short_code,
+        destinationUrl: data.destination_url,
+        isActive: data.is_active,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+        customization: data.customization
+      };
+      
+      setQRCodes(prev => prev.map(qr => qr.id === id ? transformedData : qr));
+      return transformedData;
+    } catch (err) {
+      throw new Error(err instanceof Error ? err.message : 'Failed to update QR customization');
     }
   };
 
@@ -165,6 +295,8 @@ export const useQRCodes = () => {
     updateQRCode,
     deleteQRCode,
     getQRAnalytics,
+    getQRAnalyticsSummary,
+    updateQRCustomization,
     generateShortCode,
     refetch: fetchQRCodes
   };

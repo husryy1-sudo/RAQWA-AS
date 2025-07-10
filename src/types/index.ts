@@ -35,5 +35,27 @@ export interface QRAnalytics {
   deviceType?: string;
   operatingSystem?: string;
   userAgent?: string;
+  browser?: string;
   scannedAt: string;
+}
+
+export interface QRCustomization {
+  foregroundColor: string;
+  backgroundColor: string;
+  size: number;
+  margin: number;
+  logoUrl?: string;
+  logoSize?: number;
+}
+
+export interface QRAnalyticsSummary {
+  totalScans: number;
+  todayScans: number;
+  weekScans: number;
+  monthScans: number;
+  topCountries: Array<{ country: string; count: number }>;
+  topDevices: Array<{ device: string; count: number }>;
+  topBrowsers: Array<{ browser: string; count: number }>;
+  scansByDate: Array<{ date: string; scans: number }>;
+  lastScanTime?: string;
 }

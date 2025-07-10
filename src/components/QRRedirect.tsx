@@ -35,6 +35,16 @@ export const QRRedirect: React.FC = () => {
         const parser = new UAParser();
         const result = parser.getResult();
         
+        // Extract browser name
+        const getBrowserName = (userAgent: string): string => {
+          if (userAgent.includes('Chrome') && !userAgent.includes('Edge')) return 'Chrome';
+          if (userAgent.includes('Firefox')) return 'Firefox';
+          if (userAgent.includes('Safari') && !userAgent.includes('Chrome')) return 'Safari';
+          if (userAgent.includes('Edge')) return 'Edge';
+          if (userAgent.includes('Opera')) return 'Opera';
+          return 'Other';
+        };
+        
         // Get IP and location (using a free service)
         let locationData = null;
         try {
@@ -54,6 +64,7 @@ export const QRRedirect: React.FC = () => {
           city: locationData?.city || null,
           device_type: result.device.type || (result.os.name?.includes('Mobile') ? 'mobile' : 'desktop'),
           operating_system: `${result.os.name || 'Unknown'} ${result.os.version || ''}`.trim(),
+          browser: getBrowserName(navigator.userAgent),
           user_agent: navigator.userAgent
         };
 
