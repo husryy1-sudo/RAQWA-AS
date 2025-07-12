@@ -2,14 +2,11 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { QRCode, QRAnalytics, QRAnalyticsSummary, QRCustomization } from '../types';
 import { AdvancedQRCustomization } from '../types/qr-templates';
-import { QRCodeGenerator } from '../utils/qrCodeGenerator';
-import QRCodeLib from 'qrcode';
 
 export const useQRCodes = () => {
   const [qrCodes, setQRCodes] = useState<QRCode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [qrGenerator] = useState(() => new QRCodeGenerator());
 
   const fetchQRCodes = async () => {
     try {
@@ -297,13 +294,6 @@ export const useQRCodes = () => {
 
   const updateAdvancedQRCustomization = async (id: string, customization: AdvancedQRCustomization) => {
     try {
-      // Validate that the QR code will work before saving
-      const testQR = qrCodes.find(qr => qr.id === id);
-      if (testQR) {
-        const testUrl = `${window.location.origin}/qr/${testQR.shortCode}`;
-        await qrGenerator.generateQRCode(testUrl, customization);
-      }
-      
       const { data, error } = await supabase
         .from('qr_codes')
         .update({ 
@@ -338,64 +328,31 @@ export const useQRCodes = () => {
 
   const generateQRCodeImage = async (qr: QRCode, customization?: any): Promise<string> => {
     const qrUrl = `${window.location.origin}/qr/${qr.shortCode}`;
+    const custom = customization || qr.customization || {
+      foregroundColor: '#000000',
+      backgroundColor: '#FFFFFF',
+      size: 200,
+      margin: 2
+    };
     
     try {
-      if (qr.advancedCustomization) {
-        // Use advanced customization
-        return await qrGenerator.generateQRCode(qrUrl, qr.advancedCustomization);
-      } else {
-        // Use basic customization
-        const custom = customization || qr.customization || {
-          foregroundColor: '#000000',
-          backgroundColor: '#FFFFFF',
-          size: 200,
-          margin: 2
-        };
-        
-        return await QRCodeLib.toDataURL(qrUrl, {
-          width: custom.size || 200,
-          margin: custom.margin || 2,
-          color: {
-            dark: custom.foregroundColor || '#000000',
-            light: custom.backgroundColor || '#FFFFFF'
-          },
-          errorCorrectionLevel: 'H',
-          type: 'image/png',
-          quality: 0.92,
-          rendererOpts: {
-            quality: 0.92
-          }
-        });
-      }
+      return await QRCodeLib.toDataURL(qrUrl, {
+        width: custom.size || 200,
+        margin: custom.margin || 2,
+        color: {
+          dark: custom.foregroundColor || '#000000',
+          light: custom.backgroundColor || '#FFFFFF'
+        },
+        errorCorrectionLevel: 'H',
+        type: 'image/png',
+        quality: 0.92,
+        rendererOpts: {
+          quality: 0.92
+        }
+      });
     } catch (error) {
       console.error('Failed to generate QR code:', error);
-      // Fallback to basic QR code
-      return await QRCodeLib.toDataURL(qrUrl, {
-        width: 200,
-        margin: 2,
-        color: {
-          dark: '#000000',
-          light: '#FFFFFF'
-        },
-        errorCorrectionLevel: 'H'
-      });
-    }
-  };
-
-  const validateQRCode = async (qr: QRCode): Promise<boolean> => {
-    try {
-      const qrUrl = `${window.location.origin}/qr/${qr.shortCode}`;
-      if (qr.advancedCustomization) {
-        await qrGenerator.generateQRCode(qrUrl, qr.advancedCustomization);
-      } else {
-        await QRCodeLib.toDataURL(qrUrl, {
-          errorCorrectionLevel: 'H'
-        });
-        }
-      return true;
-    } catch (error) {
-      console.error('QR code validation failed:', error);
-      return false;
+      return '';
     }
   };
 
@@ -418,8 +375,6 @@ export const useQRCodes = () => {
     getQRAnalyticsSummary,
     updateQRCustomization,
     updateAdvancedQRCustomization,
-    generateQRCodeImage,
-    validateQRCode,
     generateShortCode,
     refetch: fetchQRCodes
   };

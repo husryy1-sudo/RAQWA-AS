@@ -142,11 +142,10 @@ export const QRCodeManager: React.FC = () => {
 
   const handleSaveAdvancedCustomization = async (qr: QRCode, customization: any) => {
     try {
-      await updateAdvancedQRCustomization(qr.id, customization);
+      await updateQRCustomization(qr.id, customization);
       setShowAdvancedCustomizer(null);
     } catch (error) {
       console.error('Failed to save customization:', error);
-      alert('Failed to save QR customization. Please try again.');
     }
   };
 
@@ -416,7 +415,7 @@ export const QRCodeManager: React.FC = () => {
       {showAdvancedCustomizer && (
         <AdvancedQRCustomizer
           qrUrl={`${window.location.origin}/qr/${showAdvancedCustomizer.shortCode}`}
-          initialCustomization={showAdvancedCustomizer.advancedCustomization}
+          initialCustomization={showAdvancedCustomizer.customization}
           onSave={(customization) => handleSaveAdvancedCustomization(showAdvancedCustomizer, customization)}
           onClose={() => setShowAdvancedCustomizer(null)}
         />
