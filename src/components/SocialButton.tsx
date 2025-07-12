@@ -20,7 +20,6 @@ export const SocialButton: React.FC<SocialButtonProps> = ({ link }) => {
         <div className="flex-shrink-0 w-8 h-8 text-pink-500 group-hover:text-pink-600 transition-colors">
           <IconComponent size={32} />
         </div>
-        <span className="text-gray-800 font-medium text-lg group-hover:text-gray-900 transition-colors">
         <span className="text-gray-800 font-normal text-lg group-hover:text-gray-900 transition-colors">
           {link.name}
         </span>
@@ -29,5 +28,3 @@ export const SocialButton: React.FC<SocialButtonProps> = ({ link }) => {
     </a>
   );
 };
-  )
-}
