@@ -29,3 +29,5 @@ export const SocialButton: React.FC<SocialButtonProps> = ({ link }) => {
     </a>
   );
 };
+  )
+}
