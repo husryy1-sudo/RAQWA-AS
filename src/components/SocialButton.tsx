@@ -27,3 +27,4 @@ export const SocialButton: React.FC<SocialButtonProps> = ({ link }) => {
       <div className="absolute inset-0 bg-gradient-to-r from-pink-500/5 to-pink-600/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
     </a>
   );
+}
