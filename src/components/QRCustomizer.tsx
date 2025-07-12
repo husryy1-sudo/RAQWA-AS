@@ -36,7 +36,7 @@ export const QRCustomizer: React.FC<QRCustomizerProps> = ({
   const [showBackgroundPicker, setShowBackgroundPicker] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [logoDataUrl, setLogoDataUrl] = useState<string>('');
+  const [logoDataUrl, setLogoDataUrl] = useState<string>(initialCustomization?.logoUrl || '');
 
   useEffect(() => {
     generateQRCode();
@@ -95,12 +95,22 @@ export const QRCustomizer: React.FC<QRCustomizerProps> = ({
   const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && file.type.startsWith('image/')) {
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Logo file size must be less than 5MB');
+        return;
+      }
+      
       setLogoFile(file);
       const reader = new FileReader();
       reader.onload = (e) => {
         const result = e.target?.result as string;
         setLogoDataUrl(result);
-        setCustomization(prev => ({ ...prev, logoSize: 40 }));
+        setCustomization(prev => ({ 
+          ...prev, 
+          logoSize: prev.logoSize || 40,
+          logoUrl: result
+        }));
       };
       reader.readAsDataURL(file);
     }
@@ -109,7 +119,11 @@ export const QRCustomizer: React.FC<QRCustomizerProps> = ({
   const removeLogo = () => {
     setLogoFile(null);
     setLogoDataUrl('');
-    setCustomization(prev => ({ ...prev, logoSize: undefined }));
+    setCustomization(prev => ({ 
+      ...prev, 
+      logoSize: undefined,
+      logoUrl: undefined
+    }));
   };
 
   const resetToDefaults = () => {
@@ -311,23 +325,26 @@ export const QRCustomizer: React.FC<QRCustomizerProps> = ({
               {/* Logo Upload */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Center Logo (Optional)
+                  Center Logo (Optional) - Max 5MB
                 </label>
                 {logoDataUrl ? (
                   <div className="space-y-3">
-                    <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                      <img src={logoDataUrl} alt="Logo" className="w-8 h-8 object-cover rounded" />
-                      <span className="text-sm text-gray-600 flex-1">{logoFile?.name}</span>
+                    <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <img src={logoDataUrl} alt="Logo" className="w-12 h-12 object-cover rounded border border-gray-300" />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm text-gray-600 block truncate">{logoFile?.name || 'Uploaded Logo'}</span>
+                        <span className="text-xs text-gray-500">Size: {customization.logoSize || 40}px</span>
+                      </div>
                       <button
                         onClick={removeLogo}
-                        className="p-1 hover:bg-gray-200 rounded transition-colors"
+                        className="p-2 hover:bg-gray-200 rounded transition-colors self-end sm:self-auto"
                       >
                         <X size={16} />
                       </button>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Logo Size: {customization.logoSize || 40}px
+                        Logo Size: {customization.logoSize || 40}px (Recommended: 30-60px)
                       </label>
                       <input
                         type="range"
@@ -339,8 +356,8 @@ export const QRCustomizer: React.FC<QRCustomizerProps> = ({
                         className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
                       />
                       <div className="flex justify-between text-xs text-gray-500 mt-1">
-                        <span>30px</span>
-                        <span>100px</span>
+                        <span>30px (Small)</span>
+                        <span>100px (Large)</span>
                       </div>
                     </div>
                   </div>

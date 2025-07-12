@@ -301,19 +301,19 @@ export const QRCodeManager: React.FC = () => {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="font-medium text-gray-800">{qr.name}</p>
-                      <div className="flex items-center space-x-2 text-xs md:text-sm text-gray-600">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 text-xs md:text-sm text-gray-600">
                         <span>/qr/{qr.shortCode}</span>
                         <button
                           onClick={() => copyToClipboard(`${window.location.origin}/qr/${qr.shortCode}`)}
-                          className="p-1 hover:bg-gray-200 rounded transition-colors"
+                          className="p-1 hover:bg-gray-200 rounded transition-colors self-start sm:self-auto"
                           title="Copy QR URL"
                         >
                           <Copy size={12} />
                         </button>
                       </div>
-                      <p className="text-xs text-gray-500 truncate">{qr.destinationUrl}</p>
+                      <p className="text-xs text-gray-500 truncate mt-1">{qr.destinationUrl}</p>
                     </div>
-                    <span className={`px-2 py-1 rounded-full text-xs ${
+                    <span className={`px-2 py-1 rounded-full text-xs whitespace-nowrap ${
                       qr.isActive 
                         ? 'bg-green-100 text-green-800' 
                         : 'bg-gray-100 text-gray-800'
@@ -321,7 +321,7 @@ export const QRCodeManager: React.FC = () => {
                       {qr.isActive ? 'Active' : 'Inactive'}
                     </span>
                   </div>
-                  <div className="flex items-center space-x-1 md:space-x-2 flex-shrink-0 overflow-x-auto">
+                  <div className="flex items-center space-x-1 md:space-x-2 flex-shrink-0 mt-3 lg:mt-0">
                     <button
                       onClick={() => handleCustomizeQR(qr)}
                       className="p-2 hover:bg-gray-200 rounded-lg transition-colors"

@@ -198,10 +198,13 @@ export const AdminPanel: React.FC = () => {
         </div>
 
         {/* Social Links Section */}
-        <QRCodeManager />
+        <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg p-4 md:p-6 border border-pink-100">
+          {/* QR Code Management */}
+          <QRCodeManager />
+        </div>
 
         {/* Social Links Section */}
-        <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg p-4 md:p-6 border border-pink-100">
+        <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg p-4 md:p-6 mt-8 border border-pink-100">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-gray-800">Social Media Links</h2>
             <button
