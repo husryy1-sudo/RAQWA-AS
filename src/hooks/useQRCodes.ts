@@ -42,7 +42,8 @@ export const useQRCodes = () => {
         foregroundColor: '#000000',
         backgroundColor: '#FFFFFF',
         size: 200,
-        margin: 2
+        margin: 2,
+        logoSize: 40
       };
 
       const { data, error } = await supabase
@@ -52,7 +53,9 @@ export const useQRCodes = () => {
           short_code: qrCode.shortCode,
           destination_url: qrCode.destinationUrl,
           is_active: qrCode.isActive,
-          customization: defaultCustomization
+          customization: defaultCustomization,
+          logo_url: null,
+          logo_size: 40
         }])
         .select()
         .single();

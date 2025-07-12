@@ -54,44 +54,44 @@ export const QRAnalyticsDashboard: React.FC<QRAnalyticsDashboardProps> = ({ summ
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <div className="bg-gradient-to-r from-pink-500 to-pink-600 rounded-xl p-4 text-white">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
             <div>
               <p className="text-pink-100 text-sm">Total Scans</p>
-              <p className="text-xl md:text-2xl font-bold">{summary.totalScans.toLocaleString()}</p>
+              <p className="text-lg md:text-xl lg:text-2xl font-bold">{summary.totalScans.toLocaleString()}</p>
             </div>
-            <TrendingUp className="w-6 md:w-8 h-6 md:h-8 text-pink-200" />
+            <TrendingUp className="w-6 h-6 md:w-8 md:h-8 text-pink-200 self-end sm:self-auto" />
           </div>
         </div>
         
         <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-4 text-white">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
             <div>
               <p className="text-blue-100 text-sm">Today</p>
-              <p className="text-xl md:text-2xl font-bold">{summary.todayScans}</p>
+              <p className="text-lg md:text-xl lg:text-2xl font-bold">{summary.todayScans}</p>
             </div>
-            <Calendar className="w-6 md:w-8 h-6 md:h-8 text-blue-200" />
+            <Calendar className="w-6 h-6 md:w-8 md:h-8 text-blue-200 self-end sm:self-auto" />
           </div>
         </div>
         
         <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-4 text-white">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
             <div>
               <p className="text-green-100 text-sm">This Week</p>
-              <p className="text-xl md:text-2xl font-bold">{summary.weekScans}</p>
+              <p className="text-lg md:text-xl lg:text-2xl font-bold">{summary.weekScans}</p>
             </div>
-            <TrendingUp className="w-6 md:w-8 h-6 md:h-8 text-green-200" />
+            <TrendingUp className="w-6 h-6 md:w-8 md:h-8 text-green-200 self-end sm:self-auto" />
           </div>
         </div>
         
         <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl p-4 text-white">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
             <div>
               <p className="text-purple-100 text-sm">This Month</p>
-              <p className="text-xl md:text-2xl font-bold">{summary.monthScans}</p>
+              <p className="text-lg md:text-xl lg:text-2xl font-bold">{summary.monthScans}</p>
             </div>
-            <Calendar className="w-6 md:w-8 h-6 md:h-8 text-purple-200" />
+            <Calendar className="w-6 h-6 md:w-8 md:h-8 text-purple-200 self-end sm:self-auto" />
           </div>
         </div>
       </div>
