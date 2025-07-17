@@ -25,10 +25,6 @@ export interface QRCode {
   createdAt: string;
   updatedAt: string;
   customization?: QRCustomization;
-  advancedCustomization?: AdvancedQRCustomization;
-  logoUrl?: string;
-  logoSize?: number;
-  templateId?: string;
 }
 
 export interface QRAnalytics {
@@ -51,45 +47,6 @@ export interface QRCustomization {
   margin: number;
   logoUrl?: string;
   logoSize?: number;
-}
-
-export interface AdvancedQRCustomization {
-  size: number;
-  margin: number;
-  colors: {
-    background: string;
-    foreground: string;
-    eyeColor: string;
-    frameColor: string;
-  };
-  bodyShape: {
-    id: string;
-    name: string;
-    type: string;
-  };
-  eyeFrameShape: {
-    id: string;
-    name: string;
-    type: string;
-  };
-  eyeBallShape: {
-    id: string;
-    name: string;
-    type: string;
-  };
-  frame: {
-    id: string;
-    name: string;
-    type: 'none' | 'square' | 'rounded' | 'circle';
-  };
-  errorCorrectionLevel: 'L' | 'M' | 'Q' | 'H';
-}
-
-export interface QRTemplate {
-  id: string;
-  name: string;
-  description: string;
-  customization: AdvancedQRCustomization;
 }
 
 export interface QRAnalyticsSummary {

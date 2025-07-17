@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { QRCode, QRAnalytics, QRAnalyticsSummary, QRCustomization, AdvancedQRCustomization } from '../types';
+import { QRCode, QRAnalytics, QRAnalyticsSummary, QRCustomization } from '../types';
 
 export const useQRCodes = () => {
   const [qrCodes, setQRCodes] = useState<QRCode[]>([]);
@@ -25,11 +25,7 @@ export const useQRCodes = () => {
         isActive: item.is_active,
         createdAt: item.created_at,
         updatedAt: item.updated_at,
-        customization: item.customization,
-        advancedCustomization: item.advanced_customization,
-        logoUrl: item.logo_url,
-        logoSize: item.logo_size,
-        templateId: item.template_id
+        customization: item.customization
       }));
       
       setQRCodes(transformedData);
@@ -59,38 +55,7 @@ export const useQRCodes = () => {
           is_active: qrCode.isActive,
           customization: defaultCustomization,
           logo_url: null,
-          logo_size: 40,
-          advanced_customization: {
-            size: 300,
-            margin: 2,
-            colors: {
-              background: '#FFFFFF',
-              foreground: '#000000',
-              eyeColor: '#000000',
-              frameColor: '#333333'
-            },
-            bodyShape: {
-              id: 'square',
-              name: 'Square',
-              type: 'square'
-            },
-            eyeFrameShape: {
-              id: 'square',
-              name: 'Square',
-              type: 'square'
-            },
-            eyeBallShape: {
-              id: 'square',
-              name: 'Square',
-              type: 'square'
-            },
-            frame: {
-              id: 'none',
-              name: 'No Frame',
-              type: 'none'
-            },
-            errorCorrectionLevel: 'H'
-          }
+          logo_size: 40
         }])
         .select()
         .single();
@@ -104,12 +69,7 @@ export const useQRCodes = () => {
         destinationUrl: data.destination_url,
         isActive: data.is_active,
         createdAt: data.created_at,
-        updatedAt: data.updated_at,
-        customization: data.customization,
-        advancedCustomization: data.advanced_customization,
-        logoUrl: data.logo_url,
-        logoSize: data.logo_size,
-        templateId: data.template_id
+        updatedAt: data.updated_at
       };
       
       setQRCodes(prev => [transformedData, ...prev]);
@@ -151,12 +111,7 @@ export const useQRCodes = () => {
         destinationUrl: data.destination_url,
         isActive: data.is_active,
         createdAt: data.created_at,
-        updatedAt: data.updated_at,
-        customization: data.customization,
-        advancedCustomization: data.advanced_customization,
-        logoUrl: data.logo_url,
-        logoSize: data.logo_size,
-        templateId: data.template_id
+        updatedAt: data.updated_at
       };
       
       setQRCodes(prev => prev.map(qr => qr.id === id ? transformedData : qr));
@@ -328,49 +283,30 @@ export const useQRCodes = () => {
     }
   };
 
-  const generateQRCodeImage = async (qr: QRCode, useAdvanced = false): Promise<string> => {
+  const generateQRCodeImage = async (qr: QRCode, customization?: any): Promise<string> => {
     const qrUrl = `${window.location.origin}/qr/${qr.shortCode}`;
+    const custom = customization || qr.customization || {
+      foregroundColor: '#000000',
+      backgroundColor: '#FFFFFF',
+      size: 200,
+      margin: 2
+    };
     
     try {
-      if (useAdvanced && qr.advancedCustomization) {
-        const advanced = qr.advancedCustomization;
-        return await QRCodeLib.toDataURL(qrUrl, {
-          width: advanced.size,
-          margin: advanced.margin,
-          color: {
-            dark: advanced.colors.foreground,
-            light: advanced.colors.background
-          },
-          errorCorrectionLevel: advanced.errorCorrectionLevel,
-          type: 'image/png',
-          quality: 0.92,
-          rendererOpts: {
-            quality: 0.92
-          }
-        });
-      } else {
-        const custom = qr.customization || {
-          foregroundColor: '#000000',
-          backgroundColor: '#FFFFFF',
-          size: 200,
-          margin: 2
-        };
-        
-        return await QRCodeLib.toDataURL(qrUrl, {
-          width: custom.size || 200,
-          margin: custom.margin || 2,
-          color: {
-            dark: custom.foregroundColor || '#000000',
-            light: custom.backgroundColor || '#FFFFFF'
-          },
-          errorCorrectionLevel: 'H',
-          type: 'image/png',
-          quality: 0.92,
-          rendererOpts: {
-            quality: 0.92
-          }
-        });
-      }
+      return await QRCodeLib.toDataURL(qrUrl, {
+        width: custom.size || 200,
+        margin: custom.margin || 2,
+        color: {
+          dark: custom.foregroundColor || '#000000',
+          light: custom.backgroundColor || '#FFFFFF'
+        },
+        errorCorrectionLevel: 'H',
+        type: 'image/png',
+        quality: 0.92,
+        rendererOpts: {
+          quality: 0.92
+        }
+      });
     } catch (error) {
       console.error('Failed to generate QR code:', error);
       return '';

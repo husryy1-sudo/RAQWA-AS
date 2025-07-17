@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import QRCodeLib from 'qrcode';
 import { QRAnalyticsDashboard } from './QRAnalyticsDashboard';
-import { AdvancedQRCustomizer } from './AdvancedQRCustomizer';
+import { QRCustomizer } from './QRCustomizer';
 
 export const QRCodeManager: React.FC = () => {
   const { qrCodes, addQRCode, updateQRCode, deleteQRCode, getQRAnalytics, getQRAnalyticsSummary, updateQRCustomization, generateShortCode } = useQRCodes();
@@ -28,7 +28,7 @@ export const QRCodeManager: React.FC = () => {
   const [showAnalytics, setShowAnalytics] = useState<string | null>(null);
   const [analyticsSummary, setAnalyticsSummary] = useState<QRAnalyticsSummary | null>(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
-  const [showAdvancedCustomizer, setShowAdvancedCustomizer] = useState<QRCode | null>(null);
+  const [showCustomizer, setShowCustomizer] = useState<QRCode | null>(null);
 
   const [qrForm, setQRForm] = useState({
     name: '',
@@ -137,37 +137,15 @@ export const QRCodeManager: React.FC = () => {
   };
 
   const handleCustomizeQR = (qr: QRCode) => {
-    setShowAdvancedCustomizer(qr);
+    setShowCustomizer(qr);
   };
 
-  const handleSaveAdvancedCustomization = async (qr: QRCode, customization: any, logoUrl?: string, logoSize?: number) => {
+  const handleSaveCustomization = async (qr: QRCode, customization: any) => {
     try {
-      // Update both advanced customization and logo data
-      const updates: any = { advanced_customization: customization };
-      if (logoUrl !== undefined) {
-        updates.logo_url = logoUrl;
-        updates.logo_size = logoSize || 40;
-      }
-      
-      const { data, error } = await supabase
-        .from('qr_codes')
-        .update(updates)
-        .eq('id', qr.id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      
-      // Update local state
-      setQRCodes(prev => prev.map(qrCode => 
-        qrCode.id === qr.id 
-          ? { ...qrCode, customization: data.customization, advancedCustomization: data.advanced_customization }
-          : qrCode
-      ));
-      
-      setShowAdvancedCustomizer(null);
+      await updateQRCustomization(qr.id, customization);
+      setShowCustomizer(null);
     } catch (error) {
-      console.error('Failed to save advanced customization:', error);
+      console.error('Failed to save customization:', error);
     }
   };
 
@@ -345,9 +323,9 @@ export const QRCodeManager: React.FC = () => {
                   </div>
                   <div className="flex items-center space-x-1 md:space-x-2 flex-shrink-0 mt-3 lg:mt-0">
                     <button
-                      onClick={() => setShowAdvancedCustomizer(qr)}
+                      onClick={() => handleCustomizeQR(qr)}
                       className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
-                      title="Advanced Customize"
+                      title="Customize QR Code"
                     >
                       <Palette size={16} />
                     </button>
@@ -433,17 +411,13 @@ export const QRCodeManager: React.FC = () => {
         </div>
       )}
 
-      {/* Advanced QR Customizer Modal */}
-      {showAdvancedCustomizer && (
-        <AdvancedQRCustomizer
-          qrUrl={`${window.location.origin}/qr/${showAdvancedCustomizer.shortCode}`}
-          initialCustomization={showAdvancedCustomizer.advancedCustomization}
-          logoUrl={showAdvancedCustomizer.logoUrl}
-          logoSize={showAdvancedCustomizer.logoSize}
-          onSave={(customization, logoUrl, logoSize) => 
-            handleSaveAdvancedCustomization(showAdvancedCustomizer, customization, logoUrl, logoSize)
-          }
-          onClose={() => setShowAdvancedCustomizer(null)}
+      {/* QR Customizer Modal */}
+      {showCustomizer && (
+        <QRCustomizer
+          qrUrl={`${window.location.origin}/qr/${showCustomizer.shortCode}`}
+          initialCustomization={showCustomizer.customization}
+          onSave={(customization) => handleSaveCustomization(showCustomizer, customization)}
+          onClose={() => setShowCustomizer(null)}
         />
       )}
     </div>
