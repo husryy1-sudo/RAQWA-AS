@@ -523,6 +523,7 @@ export const AdvancedQRCustomizer: React.FC<AdvancedQRCustomizerProps> = ({
                 <select
                   value={customization.bodyShape.id}
                   onChange={(e) => {
+                    if (!e || !e.target) return;
                     const bodyShape = BODY_SHAPE_OPTIONS.find(p => p.id === e.target.value);
                     if (bodyShape) {
                       setCustomization(prev => ({ ...prev, bodyShape }));
@@ -547,6 +548,7 @@ export const AdvancedQRCustomizer: React.FC<AdvancedQRCustomizerProps> = ({
                 <select
                   value={customization.eyeFrameShape.id}
                   onChange={(e) => {
+                    if (!e || !e.target) return;
                     const eyeFrameShape = EYE_FRAME_SHAPE_OPTIONS.find(e => e.id === e.target.value);
                     if (eyeFrameShape) {
                       setCustomization(prev => ({ ...prev, eyeFrameShape }));
@@ -571,6 +573,7 @@ export const AdvancedQRCustomizer: React.FC<AdvancedQRCustomizerProps> = ({
                 <select
                   value={customization.eyeBallShape.id}
                   onChange={(e) => {
+                    if (!e || !e.target) return;
                     const eyeBallShape = EYE_BALL_SHAPE_OPTIONS.find(e => e.id === e.target.value);
                     if (eyeBallShape) {
                       setCustomization(prev => ({ ...prev, eyeBallShape }));
@@ -595,6 +598,7 @@ export const AdvancedQRCustomizer: React.FC<AdvancedQRCustomizerProps> = ({
                 <select
                   value={customization.frame.id}
                   onChange={(e) => {
+                    if (!e || !e.target) return;
                     const frame = FRAME_OPTIONS.find(f => f.id === e.target.value);
                     if (frame) {
                       setCustomization(prev => ({ ...prev, frame }));
@@ -650,10 +654,13 @@ export const AdvancedQRCustomizer: React.FC<AdvancedQRCustomizerProps> = ({
                 </label>
                 <select
                   value={customization.errorCorrectionLevel}
-                  onChange={(e) => setCustomization(prev => ({ 
-                    ...prev, 
-                    errorCorrectionLevel: e.target.value as 'L' | 'M' | 'Q' | 'H'
-                  }))}
+                  onChange={(e) => {
+                    if (!e || !e.target) return;
+                    setCustomization(prev => ({ 
+                      ...prev, 
+                      errorCorrectionLevel: e.target.value as 'L' | 'M' | 'Q' | 'H'
+                    }));
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                 >
                   <option value="L">Low (7%)</option>
