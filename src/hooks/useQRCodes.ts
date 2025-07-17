@@ -69,16 +69,20 @@ export const useQRCodes = () => {
               eyeColor: '#000000',
               frameColor: '#333333'
             },
-            pattern: {
-              id: 'classic-squares',
-              name: 'Classic Squares',
-              type: 'squares'
+            bodyShape: {
+              id: 'square',
+              name: 'Square',
+              type: 'square'
             },
-            eyeShape: {
-              id: 'square-square',
-              name: 'Square in Square',
-              outerShape: 'square',
-              innerShape: 'square'
+            eyeFrameShape: {
+              id: 'square',
+              name: 'Square',
+              type: 'square'
+            },
+            eyeBallShape: {
+              id: 'square',
+              name: 'Square',
+              type: 'square'
             },
             frame: {
               id: 'none',
