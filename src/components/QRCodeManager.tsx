@@ -415,7 +415,7 @@ export const QRCodeManager: React.FC = () => {
       {showCustomizer && (
         <QRCustomizer
           qrUrl={`${window.location.origin}/qr/${showCustomizer.shortCode}`}
-          initialCustomization={showCustomizer.customization || undefined}
+          initialCustomization={showCustomizer.customization}
           onSave={(customization) => handleSaveCustomization(showCustomizer, customization)}
           onClose={() => setShowCustomizer(null)}
         />
