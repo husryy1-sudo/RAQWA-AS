@@ -62,16 +62,20 @@ export interface AdvancedQRCustomization {
     eyeColor: string;
     frameColor: string;
   };
-  pattern: {
+  bodyShape: {
     id: string;
     name: string;
-    type: 'squares' | 'circles' | 'rounded' | 'diamonds';
+    type: string;
   };
-  eyeShape: {
+  eyeFrameShape: {
     id: string;
     name: string;
-    outerShape: 'square' | 'circle' | 'rounded';
-    innerShape: 'square' | 'circle' | 'rounded';
+    type: string;
+  };
+  eyeBallShape: {
+    id: string;
+    name: string;
+    type: string;
   };
   frame: {
     id: string;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AdvancedQRCustomization, QRTemplate } from '../types';
 import { HexColorPicker } from 'react-colorful';
 import { 
@@ -12,7 +12,7 @@ import {
   Square,
   Circle
 } from 'lucide-react';
-import QRCodeLib from 'qrcode';
+import QRCodeStyling from 'qr-code-styling';
 
 interface AdvancedQRCustomizerProps {
   qrUrl: string;
@@ -22,6 +22,80 @@ interface AdvancedQRCustomizerProps {
   onSave: (customization: AdvancedQRCustomization, logoUrl?: string, logoSize?: number) => void;
   onClose: () => void;
 }
+
+// Body Shape Options (Dot Patterns) - 22 options like in your image
+const BODY_SHAPE_OPTIONS = [
+  { id: 'square', name: 'Square', type: 'square' },
+  { id: 'dot', name: 'Dot', type: 'dot' },
+  { id: 'rounded', name: 'Rounded', type: 'rounded' },
+  { id: 'extra-rounded', name: 'Extra Rounded', type: 'extra-rounded' },
+  { id: 'classy', name: 'Classy', type: 'classy' },
+  { id: 'classy-rounded', name: 'Classy Rounded', type: 'classy-rounded' },
+  { id: 'diamond', name: 'Diamond', type: 'diamond' },
+  { id: 'star', name: 'Star', type: 'star' },
+  { id: 'mosaic', name: 'Mosaic', type: 'mosaic' },
+  { id: 'circle', name: 'Circle', type: 'circle' },
+  { id: 'heart', name: 'Heart', type: 'heart' },
+  { id: 'plus', name: 'Plus', type: 'plus' },
+  { id: 'cross', name: 'Cross', type: 'cross' },
+  { id: 'triangle', name: 'Triangle', type: 'triangle' },
+  { id: 'hexagon', name: 'Hexagon', type: 'hexagon' },
+  { id: 'vertical', name: 'Vertical', type: 'vertical' },
+  { id: 'horizontal', name: 'Horizontal', type: 'horizontal' },
+  { id: 'leaf', name: 'Leaf', type: 'leaf' },
+  { id: 'flower', name: 'Flower', type: 'flower' },
+  { id: 'wave', name: 'Wave', type: 'wave' },
+  { id: 'zigzag', name: 'Zigzag', type: 'zigzag' },
+  { id: 'gradient', name: 'Gradient', type: 'gradient' }
+];
+
+// Eye Frame Shape Options (Outer Eye) - 15 options
+const EYE_FRAME_SHAPE_OPTIONS = [
+  { id: 'square', name: 'Square', type: 'square' },
+  { id: 'circle', name: 'Circle', type: 'circle' },
+  { id: 'rounded', name: 'Rounded', type: 'rounded' },
+  { id: 'extra-rounded', name: 'Extra Rounded', type: 'extra-rounded' },
+  { id: 'leaf', name: 'Leaf', type: 'leaf' },
+  { id: 'pointed', name: 'Pointed', type: 'pointed' },
+  { id: 'star', name: 'Star', type: 'star' },
+  { id: 'diamond', name: 'Diamond', type: 'diamond' },
+  { id: 'flower', name: 'Flower', type: 'flower' },
+  { id: 'heart', name: 'Heart', type: 'heart' },
+  { id: 'shield', name: 'Shield', type: 'shield' },
+  { id: 'hexagon', name: 'Hexagon', type: 'hexagon' },
+  { id: 'octagon', name: 'Octagon', type: 'octagon' },
+  { id: 'cross', name: 'Cross', type: 'cross' },
+  { id: 'plus', name: 'Plus', type: 'plus' }
+];
+
+// Eye Ball Shape Options (Inner Eye) - 18 options
+const EYE_BALL_SHAPE_OPTIONS = [
+  { id: 'square', name: 'Square', type: 'square' },
+  { id: 'circle', name: 'Circle', type: 'circle' },
+  { id: 'rounded', name: 'Rounded', type: 'rounded' },
+  { id: 'extra-rounded', name: 'Extra Rounded', type: 'extra-rounded' },
+  { id: 'diamond', name: 'Diamond', type: 'diamond' },
+  { id: 'star', name: 'Star', type: 'star' },
+  { id: 'heart', name: 'Heart', type: 'heart' },
+  { id: 'flower', name: 'Flower', type: 'flower' },
+  { id: 'leaf', name: 'Leaf', type: 'leaf' },
+  { id: 'cross', name: 'Cross', type: 'cross' },
+  { id: 'plus', name: 'Plus', type: 'plus' },
+  { id: 'triangle', name: 'Triangle', type: 'triangle' },
+  { id: 'hexagon', name: 'Hexagon', type: 'hexagon' },
+  { id: 'octagon', name: 'Octagon', type: 'octagon' },
+  { id: 'vertical', name: 'Vertical', type: 'vertical' },
+  { id: 'horizontal', name: 'Horizontal', type: 'horizontal' },
+  { id: 'mosaic', name: 'Mosaic', type: 'mosaic' },
+  { id: 'gradient', name: 'Gradient', type: 'gradient' }
+];
+
+const FRAME_OPTIONS = [
+  { id: 'none', name: 'No Frame', type: 'none' },
+  { id: 'square', name: 'Square Frame', type: 'square' },
+  { id: 'rounded', name: 'Rounded Frame', type: 'rounded' },
+  { id: 'circle', name: 'Circle Frame', type: 'circle' }
+];
 
 const QR_TEMPLATES: QRTemplate[] = [
   {
@@ -33,12 +107,13 @@ const QR_TEMPLATES: QRTemplate[] = [
       margin: 2,
       colors: {
         background: '#FFFFFF',
-        foreground: '#000000',
-        eyeColor: '#2563eb',
-        frameColor: '#1f2937'
+        foreground: '#2563eb',
+        eyeColor: '#1f2937',
+        frameColor: '#6b7280'
       },
-      pattern: { id: 'rounded-squares', name: 'Rounded Squares', type: 'rounded' },
-      eyeShape: { id: 'rounded-circle', name: 'Rounded Outer, Circle Inner', outerShape: 'rounded', innerShape: 'circle' },
+      bodyShape: { id: 'rounded', name: 'Rounded', type: 'rounded' },
+      eyeFrameShape: { id: 'rounded', name: 'Rounded', type: 'rounded' },
+      eyeBallShape: { id: 'circle', name: 'Circle', type: 'circle' },
       frame: { id: 'rounded', name: 'Rounded Frame', type: 'rounded' },
       errorCorrectionLevel: 'H'
     }
@@ -56,8 +131,9 @@ const QR_TEMPLATES: QRTemplate[] = [
         eyeColor: '#000000',
         frameColor: '#333333'
       },
-      pattern: { id: 'classic-squares', name: 'Classic Squares', type: 'squares' },
-      eyeShape: { id: 'square-square', name: 'Square in Square', outerShape: 'square', innerShape: 'square' },
+      bodyShape: { id: 'square', name: 'Square', type: 'square' },
+      eyeFrameShape: { id: 'square', name: 'Square', type: 'square' },
+      eyeBallShape: { id: 'square', name: 'Square', type: 'square' },
       frame: { id: 'none', name: 'No Frame', type: 'none' },
       errorCorrectionLevel: 'H'
     }
@@ -75,8 +151,9 @@ const QR_TEMPLATES: QRTemplate[] = [
         eyeColor: '#8b5cf6',
         frameColor: '#06b6d4'
       },
-      pattern: { id: 'circles', name: 'Circles', type: 'circles' },
-      eyeShape: { id: 'circle-circle', name: 'Circle in Circle', outerShape: 'circle', innerShape: 'circle' },
+      bodyShape: { id: 'circle', name: 'Circle', type: 'circle' },
+      eyeFrameShape: { id: 'circle', name: 'Circle', type: 'circle' },
+      eyeBallShape: { id: 'heart', name: 'Heart', type: 'heart' },
       frame: { id: 'circle', name: 'Circle Frame', type: 'circle' },
       errorCorrectionLevel: 'H'
     }
@@ -94,35 +171,13 @@ const QR_TEMPLATES: QRTemplate[] = [
         eyeColor: '#059669',
         frameColor: '#6b7280'
       },
-      pattern: { id: 'diamonds', name: 'Diamonds', type: 'diamonds' },
-      eyeShape: { id: 'rounded-rounded', name: 'Rounded in Rounded', outerShape: 'rounded', innerShape: 'rounded' },
+      bodyShape: { id: 'diamond', name: 'Diamond', type: 'diamond' },
+      eyeFrameShape: { id: 'extra-rounded', name: 'Extra Rounded', type: 'extra-rounded' },
+      eyeBallShape: { id: 'diamond', name: 'Diamond', type: 'diamond' },
       frame: { id: 'square', name: 'Square Frame', type: 'square' },
       errorCorrectionLevel: 'H'
     }
   }
-];
-
-const PATTERN_OPTIONS = [
-  { id: 'classic-squares', name: 'Classic Squares', type: 'squares' as const },
-  { id: 'rounded-squares', name: 'Rounded Squares', type: 'rounded' as const },
-  { id: 'circles', name: 'Circles', type: 'circles' as const },
-  { id: 'diamonds', name: 'Diamonds', type: 'diamonds' as const }
-];
-
-const EYE_SHAPE_OPTIONS = [
-  { id: 'square-square', name: 'Square in Square', outerShape: 'square' as const, innerShape: 'square' as const },
-  { id: 'circle-circle', name: 'Circle in Circle', outerShape: 'circle' as const, innerShape: 'circle' as const },
-  { id: 'rounded-rounded', name: 'Rounded in Rounded', outerShape: 'rounded' as const, innerShape: 'rounded' as const },
-  { id: 'square-circle', name: 'Square Outer, Circle Inner', outerShape: 'square' as const, innerShape: 'circle' as const },
-  { id: 'circle-square', name: 'Circle Outer, Square Inner', outerShape: 'circle' as const, innerShape: 'square' as const },
-  { id: 'rounded-circle', name: 'Rounded Outer, Circle Inner', outerShape: 'rounded' as const, innerShape: 'circle' as const }
-];
-
-const FRAME_OPTIONS = [
-  { id: 'none', name: 'No Frame', type: 'none' as const },
-  { id: 'square', name: 'Square Frame', type: 'square' as const },
-  { id: 'rounded', name: 'Rounded Frame', type: 'rounded' as const },
-  { id: 'circle', name: 'Circle Frame', type: 'circle' as const }
 ];
 
 export const AdvancedQRCustomizer: React.FC<AdvancedQRCustomizerProps> = ({ 
@@ -142,6 +197,8 @@ export const AdvancedQRCustomizer: React.FC<AdvancedQRCustomizerProps> = ({
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoDataUrl, setLogoDataUrl] = useState<string>(initialLogoUrl || '');
   const [logoSize, setLogoSize] = useState<number>(initialLogoSize || 40);
+  const qrCodeRef = useRef<HTMLDivElement>(null);
+  const qrCodeInstance = useRef<QRCodeStyling | null>(null);
 
   useEffect(() => {
     generateAdvancedQRCode();
@@ -149,136 +206,67 @@ export const AdvancedQRCustomizer: React.FC<AdvancedQRCustomizerProps> = ({
 
   const generateAdvancedQRCode = async () => {
     try {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
+      if (!qrCodeRef.current) return;
 
-      // Generate base QR code with advanced settings
-      const qrCanvas = document.createElement('canvas');
-      await QRCodeLib.toCanvas(qrCanvas, qrUrl, {
+      // Create QR code with advanced styling
+      const qrCode = new QRCodeStyling({
         width: customization.size,
+        height: customization.size,
+        type: "canvas",
+        data: qrUrl,
         margin: customization.margin,
-        color: {
-          dark: customization.colors.foreground,
-          light: customization.colors.background
+        qrOptions: {
+          typeNumber: 0,
+          mode: "Byte",
+          errorCorrectionLevel: customization.errorCorrectionLevel
         },
-        errorCorrectionLevel: customization.errorCorrectionLevel,
-        type: 'image/png',
-        quality: 0.92,
-        rendererOpts: {
-          quality: 0.92
+        imageOptions: {
+          hideBackgroundDots: true,
+          imageSize: logoSize / customization.size,
+          margin: 5,
+          crossOrigin: "anonymous"
+        },
+        dotsOptions: {
+          color: customization.colors.foreground,
+          type: customization.bodyShape.type as any
+        },
+        backgroundOptions: {
+          color: customization.colors.background
+        },
+        cornersSquareOptions: {
+          color: customization.colors.eyeColor,
+          type: customization.eyeFrameShape.type as any
+        },
+        cornersDotOptions: {
+          color: customization.colors.eyeColor,
+          type: customization.eyeBallShape.type as any
         }
       });
 
-      const finalSize = customization.size + (customization.frame.type !== 'none' ? 40 : 0);
-      canvas.width = finalSize;
-      canvas.height = finalSize;
-
-      // Draw background
-      ctx.fillStyle = customization.colors.background;
-      ctx.fillRect(0, 0, finalSize, finalSize);
-
-      // Draw frame if enabled
-      if (customization.frame.type !== 'none') {
-        const frameOffset = 20;
-        const frameSize = customization.size;
-        
-        ctx.strokeStyle = customization.colors.frameColor;
-        ctx.lineWidth = 4;
-        
-        switch (customization.frame.type) {
-          case 'square':
-            ctx.strokeRect(frameOffset - 2, frameOffset - 2, frameSize + 4, frameSize + 4);
-            break;
-          case 'rounded':
-            ctx.beginPath();
-            const radius = 20;
-            ctx.roundRect(frameOffset - 2, frameOffset - 2, frameSize + 4, frameSize + 4, radius);
-            ctx.stroke();
-            break;
-          case 'circle':
-            ctx.beginPath();
-            ctx.arc(finalSize / 2, finalSize / 2, (frameSize + 4) / 2, 0, 2 * Math.PI);
-            ctx.stroke();
-            break;
-        }
-        
-        // Draw QR code with frame offset
-        ctx.drawImage(qrCanvas, frameOffset, frameOffset);
-      } else {
-        // Draw QR code without frame
-        ctx.drawImage(qrCanvas, 0, 0);
+      // Add logo if present
+      if (logoDataUrl) {
+        qrCode.update({
+          image: logoDataUrl
+        });
       }
 
-      // Apply pattern styling (this is a visual representation - actual QR generation would need a specialized library)
-      applyPatternStyling(ctx, customization);
+      // Clear previous QR code
+      if (qrCodeRef.current) {
+        qrCodeRef.current.innerHTML = '';
+      }
 
-      // Add logo if present
-      if (logoDataUrl && logoSize) {
-        const logo = new Image();
-        logo.onload = () => {
-          const logoX = (finalSize - logoSize) / 2;
-          const logoY = (finalSize - logoSize) / 2;
-          
-          // Draw logo background
-          ctx.fillStyle = customization.colors.background;
-          ctx.beginPath();
-          ctx.arc(logoX + logoSize/2, logoY + logoSize/2, (logoSize/2) + 8, 0, 2 * Math.PI);
-          ctx.fill();
-          
-          // Draw logo border
-          ctx.strokeStyle = customization.colors.foreground;
-          ctx.lineWidth = 2;
-          ctx.stroke();
-          
-          // Draw logo
-          ctx.save();
-          ctx.beginPath();
-          ctx.arc(logoX + logoSize/2, logoY + logoSize/2, logoSize/2, 0, 2 * Math.PI);
-          ctx.clip();
-          ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
-          ctx.restore();
-          
-          setQrDataUrl(canvas.toDataURL());
-        };
-        logo.src = logoDataUrl;
-      } else {
+      // Append new QR code
+      qrCode.append(qrCodeRef.current);
+      qrCodeInstance.current = qrCode;
+
+      // Generate data URL for download
+      const canvas = qrCodeRef.current?.querySelector('canvas');
+      if (canvas) {
         setQrDataUrl(canvas.toDataURL());
       }
     } catch (error) {
       console.error('Failed to generate advanced QR code:', error);
     }
-  };
-
-  const applyPatternStyling = (ctx: CanvasRenderingContext2D, customization: AdvancedQRCustomization) => {
-    // This is a simplified visual representation
-    // In a real implementation, you'd need a specialized QR library that supports custom patterns
-    
-    // Apply eye color styling
-    const eyePositions = [
-      { x: 20, y: 20 }, // Top-left
-      { x: customization.size - 60, y: 20 }, // Top-right
-      { x: 20, y: customization.size - 60 } // Bottom-left
-    ];
-
-    eyePositions.forEach(pos => {
-      ctx.fillStyle = customization.colors.eyeColor;
-      
-      switch (customization.eyeShape.outerShape) {
-        case 'circle':
-          ctx.beginPath();
-          ctx.arc(pos.x + 20, pos.y + 20, 18, 0, 2 * Math.PI);
-          ctx.fill();
-          break;
-        case 'rounded':
-          ctx.beginPath();
-          ctx.roundRect(pos.x + 2, pos.y + 2, 36, 36, 8);
-          ctx.fill();
-          break;
-        default: // square
-          ctx.fillRect(pos.x + 2, pos.y + 2, 36, 36);
-      }
-    });
   };
 
   const applyTemplate = (template: QRTemplate) => {
@@ -314,17 +302,22 @@ export const AdvancedQRCustomizer: React.FC<AdvancedQRCustomizerProps> = ({
     removeLogo();
   };
 
-  const downloadQRCode = () => {
-    if (qrDataUrl) {
-      const link = document.createElement('a');
-      link.download = 'advanced-qr-code.png';
-      link.href = qrDataUrl;
-      link.click();
+  const downloadQRCode = async () => {
+    if (qrCodeInstance.current) {
+      try {
+        await qrCodeInstance.current.download({
+          name: "custom-qr-code",
+          extension: "png"
+        });
+      } catch (error) {
+        console.error('Failed to download QR code:', error);
+      }
     }
   };
 
   const handleSave = () => {
-    onSave(customization, logoDataUrl || undefined, logoSize);
+    const finalCustomization = { ...customization };
+    onSave(finalCustomization, logoDataUrl || undefined, logoSize);
   };
 
   const ColorPicker = ({ colorKey, label }: { colorKey: keyof AdvancedQRCustomization['colors'], label: string }) => (
@@ -387,18 +380,7 @@ export const AdvancedQRCustomizer: React.FC<AdvancedQRCustomizerProps> = ({
               <div>
                 <h4 className="text-lg font-semibold text-gray-800 mb-4">Preview</h4>
                 <div className="flex justify-center p-8 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
-                  {qrDataUrl ? (
-                    <img 
-                      src={qrDataUrl} 
-                      alt="QR Code Preview" 
-                      className="max-w-full h-auto"
-                      style={{ width: Math.min(customization.size + (customization.frame.type !== 'none' ? 40 : 0), 300) }}
-                    />
-                  ) : (
-                    <div className="w-48 h-48 bg-gray-200 rounded-lg flex items-center justify-center">
-                      <span className="text-gray-500">Generating...</span>
-                    </div>
-                  )}
+                  <div ref={qrCodeRef} className="flex justify-center items-center" />
                 </div>
               </div>
               
@@ -420,7 +402,7 @@ export const AdvancedQRCustomizer: React.FC<AdvancedQRCustomizerProps> = ({
               </div>
             </div>
 
-            {/* Templates */}
+            {/* Templates and Logo */}
             <div className="space-y-6">
               <div>
                 <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
@@ -497,7 +479,7 @@ export const AdvancedQRCustomizer: React.FC<AdvancedQRCustomizerProps> = ({
 
             {/* Advanced Options */}
             <div className="space-y-6">
-              <h4 className="text-lg font-semibold text-gray-800">Advanced Options</h4>
+              <h4 className="text-lg font-semibold text-gray-800">Style Options</h4>
               
               {/* Colors */}
               <div className="space-y-4">
@@ -508,48 +490,73 @@ export const AdvancedQRCustomizer: React.FC<AdvancedQRCustomizerProps> = ({
                 <ColorPicker colorKey="frameColor" label="Frame Color" />
               </div>
 
-              {/* Pattern Style */}
+              {/* Body Shape (Dot Pattern) */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                  <Square className="w-4 h-4 mr-1" />
                   Dot Pattern Style
                 </label>
                 <select
-                  value={customization.pattern.id}
+                  value={customization.bodyShape.id}
                   onChange={(e) => {
-                    const pattern = PATTERN_OPTIONS.find(p => p.id === e.target.value);
-                    if (pattern) {
-                      setCustomization(prev => ({ ...prev, pattern }));
+                    const bodyShape = BODY_SHAPE_OPTIONS.find(p => p.id === e.target.value);
+                    if (bodyShape) {
+                      setCustomization(prev => ({ ...prev, bodyShape }));
                     }
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                 >
-                  {PATTERN_OPTIONS.map(pattern => (
-                    <option key={pattern.id} value={pattern.id}>
-                      {pattern.name}
+                  {BODY_SHAPE_OPTIONS.map(bodyShape => (
+                    <option key={bodyShape.id} value={bodyShape.id}>
+                      {bodyShape.name}
                     </option>
                   ))}
                 </select>
               </div>
 
-              {/* Eye Shape */}
+              {/* Eye Frame Shape */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
                   <Eye className="w-4 h-4 mr-1" />
-                  Eye Shape Style
+                  Eye Frame Style (Outer)
                 </label>
                 <select
-                  value={customization.eyeShape.id}
+                  value={customization.eyeFrameShape.id}
                   onChange={(e) => {
-                    const eyeShape = EYE_SHAPE_OPTIONS.find(e => e.id === e.target.value);
-                    if (eyeShape) {
-                      setCustomization(prev => ({ ...prev, eyeShape }));
+                    const eyeFrameShape = EYE_FRAME_SHAPE_OPTIONS.find(e => e.id === e.target.value);
+                    if (eyeFrameShape) {
+                      setCustomization(prev => ({ ...prev, eyeFrameShape }));
                     }
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                 >
-                  {EYE_SHAPE_OPTIONS.map(eyeShape => (
-                    <option key={eyeShape.id} value={eyeShape.id}>
-                      {eyeShape.name}
+                  {EYE_FRAME_SHAPE_OPTIONS.map(eyeFrameShape => (
+                    <option key={eyeFrameShape.id} value={eyeFrameShape.id}>
+                      {eyeFrameShape.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Eye Ball Shape */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                  <Circle className="w-4 h-4 mr-1" />
+                  Eye Ball Style (Inner)
+                </label>
+                <select
+                  value={customization.eyeBallShape.id}
+                  onChange={(e) => {
+                    const eyeBallShape = EYE_BALL_SHAPE_OPTIONS.find(e => e.id === e.target.value);
+                    if (eyeBallShape) {
+                      setCustomization(prev => ({ ...prev, eyeBallShape }));
+                    }
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                >
+                  {EYE_BALL_SHAPE_OPTIONS.map(eyeBallShape => (
+                    <option key={eyeBallShape.id} value={eyeBallShape.id}>
+                      {eyeBallShape.name}
                     </option>
                   ))}
                 </select>
