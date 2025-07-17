@@ -26,33 +26,6 @@ export const QRCustomizer: React.FC<QRCustomizerProps> = ({
   onSave, 
   onClose 
 }) => {
-  // Convert old QRCustomization to QRAdvancedCustomization if needed
-  const convertToAdvancedCustomization = (customization: any): QRAdvancedCustomization => {
-    if (!customization) {
-      return getDefaultAdvancedCustomization();
-    }
-    
-    // Check if it's already an advanced customization (has colors object)
-    if (customization.colors && typeof customization.colors === 'object') {
-      return customization as QRAdvancedCustomization;
-    }
-    
-    // Convert old format to new format
-    const defaultCustomization = getDefaultAdvancedCustomization();
-    return {
-      ...defaultCustomization,
-      size: customization.size || defaultCustomization.size,
-      margin: customization.margin || defaultCustomization.margin,
-      colors: {
-        background: customization.backgroundColor || defaultCustomization.colors.background,
-        foreground: customization.foregroundColor || defaultCustomization.colors.foreground,
-        eyeColor: customization.foregroundColor || defaultCustomization.colors.eyeColor,
-        frameColor: defaultCustomization.colors.frameColor
-      },
-      logoUrl: customization.logoUrl
-    };
-  };
-
   // Convert old customization format to new format if needed
   const convertToAdvancedCustomization = (oldCustomization: any): QRAdvancedCustomization => {
     if (oldCustomization && oldCustomization.colors) {
@@ -300,7 +273,7 @@ export const QRCustomizer: React.FC<QRCustomizerProps> = ({
               <div>
                 <h5 className="text-base font-semibold text-gray-800 mb-3">Colors</h5>
                 <div className="grid grid-cols-2 gap-4">
-                  {Object.entries(customization.colors).map(([colorType, color]) => (
+                  {customization.colors && Object.entries(customization.colors).map(([colorType, color]) => (
                     <div key={colorType}>
                       <label className="block text-sm font-medium text-gray-700 mb-2 capitalize">
                         {colorType.replace(/([A-Z])/g, ' $1').trim()}
