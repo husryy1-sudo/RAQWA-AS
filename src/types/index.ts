@@ -25,6 +25,10 @@ export interface QRCode {
   createdAt: string;
   updatedAt: string;
   customization?: QRCustomization;
+  advancedCustomization?: AdvancedQRCustomization;
+  logoUrl?: string;
+  logoSize?: number;
+  templateId?: string;
 }
 
 export interface QRAnalytics {
