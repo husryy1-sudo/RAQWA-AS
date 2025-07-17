@@ -24,7 +24,11 @@ export interface QRCode {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-  customization?: QRCustomization;
+  customization?: QRCustomization | QRAdvancedCustomization;
+  advancedCustomization?: QRAdvancedCustomization;
+  templateId?: string;
+  logoUrl?: string;
+  logoSize?: number;
 }
 
 export interface QRAnalytics {

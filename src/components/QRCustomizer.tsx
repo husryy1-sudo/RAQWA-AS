@@ -26,8 +26,35 @@ export const QRCustomizer: React.FC<QRCustomizerProps> = ({
   onSave, 
   onClose 
 }) => {
+  // Convert old customization format to new format if needed
+  const convertToAdvancedCustomization = (oldCustomization: any): QRAdvancedCustomization => {
+    if (oldCustomization && oldCustomization.colors) {
+      // Already in new format
+      return oldCustomization;
+    }
+    
+    // Convert old format or create default
+    const defaultCustomization = getDefaultAdvancedCustomization();
+    
+    if (oldCustomization) {
+      return {
+        ...defaultCustomization,
+        size: oldCustomization.size || defaultCustomization.size,
+        margin: oldCustomization.margin || defaultCustomization.margin,
+        colors: {
+          ...defaultCustomization.colors,
+          background: oldCustomization.backgroundColor || defaultCustomization.colors.background,
+          foreground: oldCustomization.foregroundColor || defaultCustomization.colors.foreground,
+        },
+        logoUrl: oldCustomization.logoUrl,
+      };
+    }
+    
+    return defaultCustomization;
+  };
+
   const [customization, setCustomization] = useState<QRAdvancedCustomization>(
-    initialCustomization || getDefaultAdvancedCustomization()
+    convertToAdvancedCustomization(initialCustomization)
   );
   
   const [selectedTemplate, setSelectedTemplate] = useState<string>('classic');
