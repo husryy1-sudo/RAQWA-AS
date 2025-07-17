@@ -49,6 +49,41 @@ export interface QRCustomization {
   logoSize?: number;
 }
 
+export interface AdvancedQRCustomization {
+  size: number;
+  margin: number;
+  colors: {
+    background: string;
+    foreground: string;
+    eyeColor: string;
+    frameColor: string;
+  };
+  pattern: {
+    id: string;
+    name: string;
+    type: 'squares' | 'circles' | 'rounded' | 'diamonds';
+  };
+  eyeShape: {
+    id: string;
+    name: string;
+    outerShape: 'square' | 'circle' | 'rounded';
+    innerShape: 'square' | 'circle' | 'rounded';
+  };
+  frame: {
+    id: string;
+    name: string;
+    type: 'none' | 'square' | 'rounded' | 'circle';
+  };
+  errorCorrectionLevel: 'L' | 'M' | 'Q' | 'H';
+}
+
+export interface QRTemplate {
+  id: string;
+  name: string;
+  description: string;
+  customization: AdvancedQRCustomization;
+}
+
 export interface QRAnalyticsSummary {
   totalScans: number;
   todayScans: number;
