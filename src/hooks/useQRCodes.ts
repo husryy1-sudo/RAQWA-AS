@@ -7,38 +7,52 @@ export const useQRCodes = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Pagination State
+  // Pagination & Filter State
   const [page, setPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [totalPages, setTotalPages] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const PAGE_SIZE = 12;
 
-  const fetchQRCodes = async (currentPage = 1) => {
+  const fetchQRCodes = async (
+    pageOverride?: number,
+    searchOverride?: string,
+    statusOverride?: string
+  ) => {
     try {
       setLoading(true);
 
-      // Get total count first
-      const { count, error: countError } = await supabase
-        .from('qr_codes')
-        .select('*', { count: 'exact', head: true });
+      const currentPage = pageOverride ?? page;
+      const currentSearch = searchOverride ?? searchQuery;
+      const currentStatus = statusOverride ?? statusFilter;
 
-      if (countError) throw countError;
-
-      const total = count || 0;
-      setTotalPages(Math.ceil(total / PAGE_SIZE));
-      setHasMore(currentPage * PAGE_SIZE < total);
-
-      // Fetchpaginated data
+      // Calculate range
       const from = (currentPage - 1) * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
 
-      const { data, error } = await supabase
+      // Build query
+      let query = supabase
         .from('qr_codes')
-        .select('*')
+        .select('*', { count: 'exact' });
+
+      if (currentSearch) {
+        query = query.or(`name.ilike.%${currentSearch}%,short_code.ilike.%${currentSearch}%`);
+      }
+
+      if (currentStatus !== 'all') {
+        query = query.eq('is_active', currentStatus === 'active');
+      }
+
+      const { data, error, count } = await query
         .order('created_at', { ascending: false })
         .range(from, to);
 
       if (error) throw error;
+
+      const total = count || 0;
+      setTotalPages(Math.ceil(total / PAGE_SIZE));
+      setHasMore(currentPage * PAGE_SIZE < total);
 
       const transformedData = (data || []).map(item => ({
         id: item.id,
@@ -52,7 +66,12 @@ export const useQRCodes = () => {
       }));
 
       setQRCodes(transformedData);
+
+      // Update state
       setPage(currentPage);
+      if (searchOverride !== undefined) setSearchQuery(searchOverride);
+      if (statusOverride !== undefined) setStatusFilter(statusOverride);
+
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -325,6 +344,8 @@ export const useQRCodes = () => {
     updateQRCustomization,
     generateShortCode,
     uploadLogo,
-    refetch: () => fetchQRCodes(page)
+    refetch: () => fetchQRCodes(page),
+    searchQuery,
+    statusFilter
   };
 };
