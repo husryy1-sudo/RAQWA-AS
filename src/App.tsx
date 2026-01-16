@@ -12,7 +12,7 @@ function App() {
       <Routes>
         <Route path="/info" element={<HomePage />} />
         <Route path="/qr/:shortCode" element={<QRRedirect />} />
-        <Route path="/admin" element={<AdminRoute />} />
+        <Route path="/admin/*" element={<AdminRoute />} />
         <Route path="/" element={<Navigate to="/info" replace />} />
         <Route path="*" element={<Navigate to="/info" replace />} />
       </Routes>
@@ -22,7 +22,7 @@ function App() {
 
 const AdminRoute: React.FC = () => {
   const { isAuthenticated } = useAuth();
-  
+
   return isAuthenticated ? <AdminPanel /> : <AdminLogin />;
 };
 
