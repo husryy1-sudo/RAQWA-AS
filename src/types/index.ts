@@ -41,12 +41,49 @@ export interface QRAnalytics {
 }
 
 export interface QRCustomization {
-  foregroundColor: string;
-  backgroundColor: string;
+  // Core
   size: number;
   margin: number;
-  logoUrl?: string;
-  logoSize?: number;
+
+  // Colors & Background
+  backgroundColor: string;
+  foregroundColor: string; // Helper for simple color
+  dotsOptions: {
+    type: 'square' | 'dots' | 'rounded' | 'classy' | 'classy-rounded' | 'extra-rounded';
+    color: string;
+    gradient?: {
+      type: 'linear' | 'radial';
+      rotation: number;
+      colorStops: { offset: number; color: string }[];
+    };
+  };
+  backgroundOptions: {
+    color: string;
+    gradient?: {
+      type: 'linear' | 'radial';
+      rotation: number;
+      colorStops: { offset: number; color: string }[];
+    };
+  };
+
+  // Corners (Eyes)
+  cornersSquareOptions: {
+    type: 'dot' | 'square' | 'extra-rounded';
+    color: string;
+  };
+  cornersDotOptions: {
+    type: 'dot' | 'square';
+    color: string;
+  };
+
+  // Logo
+  logoUrl?: string; // Stored in DB
+  imageOptions: {
+    hideBackgroundDots: boolean;
+    imageSize: number;
+    margin: number;
+    crossOrigin?: string;
+  };
 }
 
 export interface QRAnalyticsSummary {
