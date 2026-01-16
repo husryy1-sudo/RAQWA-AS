@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { QRCustomization } from '../types';
 import { HexColorPicker } from 'react-colorful';
-import { 
-  Palette, 
-  Download, 
+import {
+  Palette,
+  Download,
   RotateCcw,
   Upload,
   X
@@ -15,13 +15,15 @@ interface QRCustomizerProps {
   initialCustomization?: QRCustomization;
   onSave: (customization: QRCustomization) => void;
   onClose: () => void;
+  onUploadLogo?: (file: File) => Promise<string>;
 }
 
-export const QRCustomizer: React.FC<QRCustomizerProps> = ({ 
-  qrUrl, 
-  initialCustomization, 
-  onSave, 
-  onClose 
+export const QRCustomizer: React.FC<QRCustomizerProps> = ({
+  qrUrl,
+  initialCustomization,
+  onSave,
+  onClose,
+  onUploadLogo
 }) => {
   const [customization, setCustomization] = useState<QRCustomization>(
     initialCustomization || {
@@ -31,16 +33,18 @@ export const QRCustomizer: React.FC<QRCustomizerProps> = ({
       margin: 2
     }
   );
-  
+
   const [showForegroundPicker, setShowForegroundPicker] = useState(false);
   const [showBackgroundPicker, setShowBackgroundPicker] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoDataUrl, setLogoDataUrl] = useState<string>(initialCustomization?.logoUrl || '');
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     generateQRCode();
   }, [customization, logoDataUrl]);
+
 
   const generateQRCode = async () => {
     try {
@@ -78,26 +82,26 @@ export const QRCustomizer: React.FC<QRCustomizerProps> = ({
           const logoSize = customization.logoSize || 40;
           const x = (customization.size - logoSize) / 2;
           const y = (customization.size - logoSize) / 2;
-          
+
           // Draw clean circular background for logo
           ctx.fillStyle = customization.backgroundColor;
           ctx.beginPath();
-          ctx.arc(x + logoSize/2, y + logoSize/2, (logoSize/2) + 6, 0, 2 * Math.PI);
+          ctx.arc(x + logoSize / 2, y + logoSize / 2, (logoSize / 2) + 6, 0, 2 * Math.PI);
           ctx.fill();
-          
+
           // Add subtle border
           ctx.strokeStyle = customization.foregroundColor;
           ctx.lineWidth = 1;
           ctx.stroke();
-          
+
           // Draw logo
           ctx.save();
           ctx.beginPath();
-          ctx.arc(x + logoSize/2, y + logoSize/2, logoSize/2, 0, 2 * Math.PI);
+          ctx.arc(x + logoSize / 2, y + logoSize / 2, logoSize / 2, 0, 2 * Math.PI);
           ctx.clip();
           ctx.drawImage(logo, x, y, logoSize, logoSize);
           ctx.restore();
-          
+
           setQrDataUrl(canvas.toDataURL());
         };
         logo.src = logoDataUrl;
@@ -109,7 +113,7 @@ export const QRCustomizer: React.FC<QRCustomizerProps> = ({
     }
   };
 
-  const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && file.type.startsWith('image/')) {
       // Validate file size (max 5MB)
@@ -117,27 +121,48 @@ export const QRCustomizer: React.FC<QRCustomizerProps> = ({
         alert('Logo file size must be less than 5MB');
         return;
       }
-      
+
       setLogoFile(file);
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result as string;
-        setLogoDataUrl(result);
-        setCustomization(prev => ({ 
-          ...prev, 
-          logoSize: prev.logoSize || 40,
-          logoUrl: result
-        }));
-      };
-      reader.readAsDataURL(file);
+
+      // If we have an upload handler, upload immediately to get the URL
+      if (onUploadLogo) {
+        try {
+          setIsUploading(true);
+          const url = await onUploadLogo(file);
+          setLogoDataUrl(url);
+          setCustomization(prev => ({
+            ...prev,
+            logoSize: prev.logoSize || 40,
+            logoUrl: url
+          }));
+        } catch (error) {
+          console.error('Failed to upload logo:', error);
+          alert('Failed to upload logo');
+        } finally {
+          setIsUploading(false);
+        }
+      } else {
+        // Fallback to Data URL
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const result = e.target?.result as string;
+          setLogoDataUrl(result);
+          setCustomization(prev => ({
+            ...prev,
+            logoSize: prev.logoSize || 40,
+            logoUrl: result
+          }));
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 
   const removeLogo = () => {
     setLogoFile(null);
     setLogoDataUrl('');
-    setCustomization(prev => ({ 
-      ...prev, 
+    setCustomization(prev => ({
+      ...prev,
       logoSize: undefined,
       logoUrl: undefined
     }));
@@ -187,7 +212,7 @@ export const QRCustomizer: React.FC<QRCustomizerProps> = ({
             </button>
           </div>
         </div>
-        
+
         <div className="p-4 md:p-6 overflow-y-auto max-h-[calc(95vh-120px)]">
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 md:gap-8">
             {/* Preview */}
@@ -196,9 +221,9 @@ export const QRCustomizer: React.FC<QRCustomizerProps> = ({
                 <h4 className="text-base md:text-lg font-semibold text-gray-800 mb-4">Preview</h4>
                 <div className="flex justify-center p-4 md:p-8 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
                   {qrDataUrl ? (
-                    <img 
-                      src={qrDataUrl} 
-                      alt="QR Code Preview" 
+                    <img
+                      src={qrDataUrl}
+                      alt="QR Code Preview"
                       className="max-w-full h-auto"
                       style={{ width: Math.min(customization.size, 250) }}
                     />
@@ -209,7 +234,7 @@ export const QRCustomizer: React.FC<QRCustomizerProps> = ({
                   )}
                 </div>
               </div>
-              
+
               <div className="flex space-x-3">
                 <button
                   onClick={downloadQRCode}
@@ -231,7 +256,7 @@ export const QRCustomizer: React.FC<QRCustomizerProps> = ({
             {/* Customization Options */}
             <div className="space-y-6">
               <h4 className="text-base md:text-lg font-semibold text-gray-800">Customization Options</h4>
-              
+
               {/* Colors */}
               <div className="space-y-4">
                 <div>
@@ -243,7 +268,7 @@ export const QRCustomizer: React.FC<QRCustomizerProps> = ({
                       onClick={() => setShowForegroundPicker(!showForegroundPicker)}
                       className="w-full flex items-center space-x-2 md:space-x-3 p-2 md:p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition-colors"
                     >
-                      <div 
+                      <div
                         className="w-6 h-6 rounded border border-gray-300"
                         style={{ backgroundColor: customization.foregroundColor }}
                       />
@@ -275,7 +300,7 @@ export const QRCustomizer: React.FC<QRCustomizerProps> = ({
                       onClick={() => setShowBackgroundPicker(!showBackgroundPicker)}
                       className="w-full flex items-center space-x-2 md:space-x-3 p-2 md:p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition-colors"
                     >
-                      <div 
+                      <div
                         className="w-6 h-6 rounded border border-gray-300"
                         style={{ backgroundColor: customization.backgroundColor }}
                       />
