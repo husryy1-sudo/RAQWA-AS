@@ -6,9 +6,9 @@ declare module 'qr-code-styling' {
     export type TypeNumber = number;
     export type Mode = 'Canvas' | 'SVG' | 'Byte' | 'Numeric' | 'Alphanumeric' | 'Kanji';
     export type ErrorCorrectionLevel = 'L' | 'M' | 'Q' | 'H';
-    export type DotType = 'dots' | 'rounded' | 'classy' | 'classy-rounded' | 'square' | 'extra-rounded';
-    export type CornerSquareType = 'dot' | 'square' | 'extra-rounded';
-    export type CornerDotType = 'dot' | 'square';
+    export type DotType = 'dots' | 'rounded' | 'classy' | 'classy-rounded' | 'square' | 'extra-rounded' | string;
+    export type CornerSquareType = 'dot' | 'square' | 'extra-rounded' | 'classy' | 'classy-rounded' | 'rounded' | string;
+    export type CornerDotType = 'dot' | 'square' | 'rounded' | string;
 
     export default class QRCodeStyling {
         constructor(options?: any);
