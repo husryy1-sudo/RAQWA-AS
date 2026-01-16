@@ -46,18 +46,25 @@ export const QRCustomizer: React.FC<QRCustomizerProps> = ({
   onUploadLogo
 }) => {
   const [activeTab, setActiveTab] = useState('style');
-  const qrCode = useRef<QRCodeStyling>(new QRCodeStyling({
-    width: 300,
-    height: 300,
-    type: 'canvas',
-    data: qrUrl,
-    imageOptions: {
-      crossOrigin: 'anonymous',
-      margin: 2
-    }
-  }));
-
+  const qrCode = useRef<QRCodeStyling | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Initialize QR Code instance safely
+    if (!qrCode.current) {
+      qrCode.current = new QRCodeStyling({
+        width: 300,
+        height: 300,
+        type: 'canvas',
+        data: qrUrl,
+        imageOptions: {
+          crossOrigin: 'anonymous',
+          margin: 2
+        }
+      });
+      qrCode.current.append(ref.current || undefined);
+    }
+  }, []);
 
   const [customization, setCustomization] = useState<QRCustomization>(
     initialCustomization || {
@@ -91,11 +98,11 @@ export const QRCustomizer: React.FC<QRCustomizerProps> = ({
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  useEffect(() => {
-    qrCode.current.append(ref.current || undefined);
-  }, []);
+
 
   useEffect(() => {
+    if (!qrCode.current) return;
+
     qrCode.current.update({
       data: qrUrl,
       width: customization.size,
@@ -130,6 +137,7 @@ export const QRCustomizer: React.FC<QRCustomizerProps> = ({
   };
 
   const downloadQR = async (format: 'png' | 'jpeg' | 'svg' | 'pdf') => {
+    if (!qrCode.current) return;
     await qrCode.current.download({
       name: `qr-code`,
       extension: format
@@ -148,8 +156,8 @@ export const QRCustomizer: React.FC<QRCustomizerProps> = ({
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex flex-col items-center justify-center p-3 rounded-xl transition-all w-full text-xs font-medium ${activeTab === tab.id
-                    ? 'bg-pink-100 text-pink-600 shadow-sm'
-                    : 'text-gray-500 hover:bg-gray-100'
+                  ? 'bg-pink-100 text-pink-600 shadow-sm'
+                  : 'text-gray-500 hover:bg-gray-100'
                   }`}
               >
                 <tab.icon className="w-6 h-6 mb-1" />
@@ -185,8 +193,8 @@ export const QRCustomizer: React.FC<QRCustomizerProps> = ({
                         }`}
                     >
                       <div className={`w-8 h-8 bg-gray-800 ${type === 'dots' ? 'rounded-full' :
-                          type === 'rounded' ? 'rounded-md' :
-                            type === 'extra-rounded' ? 'rounded-lg' : ''
+                        type === 'rounded' ? 'rounded-md' :
+                          type === 'extra-rounded' ? 'rounded-lg' : ''
                         }`} />
                       <span className="text-xs capitalize">{type.replace('-', ' ')}</span>
                     </button>
