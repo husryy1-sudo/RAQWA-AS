@@ -1,20 +1,30 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { Lock, Eye, EyeOff } from 'lucide-react';
+import { Lock, Eye, EyeOff, Mail } from 'lucide-react';
 
 export const AdminLogin: React.FC = () => {
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
+  const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (login(password)) {
-      setError('');
-    } else {
-      setError('Invalid password');
+    setIsLoading(true);
+    setError('');
+
+    try {
+      await login(email, password);
+      // Auth state change will trigger redirect in App.tsx or useAuth hook if setup, 
+      // but explicitly navigating is safe here if AdminRoute checks connection.
+      navigate('/admin');
+    } catch (err: any) {
+      setError(err.message || 'Failed to login');
+      setIsLoading(false);
     }
   };
 
@@ -28,11 +38,31 @@ export const AdminLogin: React.FC = () => {
               <Lock className="w-8 h-8 text-white" />
             </div>
             <h1 className="text-2xl font-bold text-gray-800 mb-2">Admin Login</h1>
-            <p className="text-gray-600 font-normal">Enter your password to access the admin panel</p>
+            <p className="text-gray-600 font-normal">Enter your credentials to access the admin panel</p>
           </div>
 
           {/* Login Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                Email
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Mail className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="email"
+                  id="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full pl-10 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all duration-200"
+                  placeholder="admin@example.com"
+                  required
+                />
+              </div>
+            </div>
+
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
                 Password
@@ -65,15 +95,16 @@ export const AdminLogin: React.FC = () => {
 
             <button
               type="submit"
-              className="w-full bg-gradient-to-r from-pink-500 to-pink-600 text-white py-3 px-6 rounded-xl font-medium hover:from-pink-600 hover:to-pink-700 transition-all duration-200 transform hover:scale-[1.02] shadow-lg hover:shadow-xl"
+              disabled={isLoading}
+              className="w-full bg-gradient-to-r from-pink-500 to-pink-600 text-white py-3 px-6 rounded-xl font-medium hover:from-pink-600 hover:to-pink-700 transition-all duration-200 transform hover:scale-[1.02] shadow-lg hover:shadow-xl disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              Login
+              {isLoading ? 'Signing in...' : 'Login'}
             </button>
           </form>
 
           <div className="mt-4 text-center">
-            <Link 
-              to="/" 
+            <Link
+              to="/"
               className="text-sm text-gray-500 hover:text-pink-500 transition-colors"
             >
               ← Back to Homepage
