@@ -8,7 +8,7 @@ import {
   Upload,
   X
 } from 'lucide-react';
-import QRCodeLib from 'qrcode';
+import { generateQRCodeImage } from '../utils/qrutils';
 
 interface QRCustomizerProps {
   qrUrl: string;
@@ -47,69 +47,10 @@ export const QRCustomizer: React.FC<QRCustomizerProps> = ({
 
 
   const generateQRCode = async () => {
-    try {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      // Generate base QR code
-      const qrCanvas = document.createElement('canvas');
-      await QRCodeLib.toCanvas(qrCanvas, qrUrl, {
-        width: customization.size,
-        margin: customization.margin,
-        color: {
-          dark: customization.foregroundColor,
-          light: customization.backgroundColor
-        },
-        errorCorrectionLevel: 'H',
-        type: 'image/png',
-        quality: 0.92,
-        rendererOpts: {
-          quality: 0.92
-        }
-      });
-
-      canvas.width = customization.size;
-      canvas.height = customization.size;
-
-      // Draw QR code
-      ctx.drawImage(qrCanvas, 0, 0);
-
-      // Add logo if present
-      if (logoDataUrl && customization.logoSize) {
-        const logo = new Image();
-        logo.onload = () => {
-          const logoSize = customization.logoSize || 40;
-          const x = (customization.size - logoSize) / 2;
-          const y = (customization.size - logoSize) / 2;
-
-          // Draw clean circular background for logo
-          ctx.fillStyle = customization.backgroundColor;
-          ctx.beginPath();
-          ctx.arc(x + logoSize / 2, y + logoSize / 2, (logoSize / 2) + 6, 0, 2 * Math.PI);
-          ctx.fill();
-
-          // Add subtle border
-          ctx.strokeStyle = customization.foregroundColor;
-          ctx.lineWidth = 1;
-          ctx.stroke();
-
-          // Draw logo
-          ctx.save();
-          ctx.beginPath();
-          ctx.arc(x + logoSize / 2, y + logoSize / 2, logoSize / 2, 0, 2 * Math.PI);
-          ctx.clip();
-          ctx.drawImage(logo, x, y, logoSize, logoSize);
-          ctx.restore();
-
-          setQrDataUrl(canvas.toDataURL());
-        };
-        logo.src = logoDataUrl;
-      } else {
-        setQrDataUrl(canvas.toDataURL());
-      }
-    } catch (error) {
-      console.error('Failed to generate QR code:', error);
+    // We can use the centralized utility which handles canvas drawing and logo embedding
+    const dataUrl = await generateQRCodeImage(qrUrl, customization);
+    if (dataUrl) {
+      setQrDataUrl(dataUrl);
     }
   };
 
