@@ -1,4 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import QRCodeStyling, {
+  DrawType,
+  TypeNumber,
+  Mode,
+  ErrorCorrectionLevel,
+  DotType,
+  CornerSquareType,
+  CornerDotType
+} from 'qr-code-styling';
 import { QRCustomization } from '../types';
 import { HexColorPicker } from 'react-colorful';
 import {
@@ -6,9 +15,13 @@ import {
   Download,
   RotateCcw,
   Upload,
-  X
+  X,
+  LayoutGrid,
+  Shapes,
+  Image as ImageIcon,
+  Layers,
+  Check
 } from 'lucide-react';
-import { generateQRCodeImage } from '../utils/qrutils';
 
 interface QRCustomizerProps {
   qrUrl: string;
@@ -18,6 +31,13 @@ interface QRCustomizerProps {
   onUploadLogo?: (file: File) => Promise<string>;
 }
 
+const TABS = [
+  { id: 'style', label: 'Style', icon: LayoutGrid },
+  { id: 'colors', label: 'Colors', icon: Palette },
+  { id: 'eyes', label: 'Eyes', icon: Shapes },
+  { id: 'logo', label: 'Logo', icon: ImageIcon },
+];
+
 export const QRCustomizer: React.FC<QRCustomizerProps> = ({
   qrUrl,
   initialCustomization,
@@ -25,361 +45,336 @@ export const QRCustomizer: React.FC<QRCustomizerProps> = ({
   onClose,
   onUploadLogo
 }) => {
+  const [activeTab, setActiveTab] = useState('style');
+  const qrCode = useRef<QRCodeStyling>(new QRCodeStyling({
+    width: 300,
+    height: 300,
+    type: 'canvas',
+    data: qrUrl,
+    imageOptions: {
+      crossOrigin: 'anonymous',
+      margin: 2
+    }
+  }));
+
+  const ref = useRef<HTMLDivElement>(null);
+
   const [customization, setCustomization] = useState<QRCustomization>(
     initialCustomization || {
-      foregroundColor: '#000000',
+      size: 300,
+      margin: 2,
       backgroundColor: '#FFFFFF',
-      size: 200,
-      margin: 2
+      foregroundColor: '#000000',
+      dotsOptions: {
+        type: 'square',
+        color: '#000000'
+      },
+      backgroundOptions: {
+        color: '#FFFFFF'
+      },
+      cornersSquareOptions: {
+        type: 'square',
+        color: '#000000'
+      },
+      cornersDotOptions: {
+        type: 'square',
+        color: '#000000'
+      },
+      imageOptions: {
+        hideBackgroundDots: true,
+        imageSize: 0.4,
+        margin: 5
+      }
     }
   );
 
-  const [showForegroundPicker, setShowForegroundPicker] = useState(false);
-  const [showBackgroundPicker, setShowBackgroundPicker] = useState(false);
-  const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [logoDataUrl, setLogoDataUrl] = useState<string>(initialCustomization?.logoUrl || '');
   const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
-    generateQRCode();
-  }, [customization, logoDataUrl]);
+    qrCode.current.append(ref.current || undefined);
+  }, []);
 
-
-  const generateQRCode = async () => {
-    // We can use the centralized utility which handles canvas drawing and logo embedding
-    const dataUrl = await generateQRCodeImage(qrUrl, customization);
-    if (dataUrl) {
-      setQrDataUrl(dataUrl);
-    }
-  };
+  useEffect(() => {
+    qrCode.current.update({
+      data: qrUrl,
+      width: customization.size,
+      height: customization.size,
+      margin: customization.margin,
+      dotsOptions: customization.dotsOptions,
+      cornersSquareOptions: customization.cornersSquareOptions,
+      cornersDotOptions: customization.cornersDotOptions,
+      backgroundOptions: customization.backgroundOptions,
+      image: customization.logoUrl,
+      imageOptions: customization.imageOptions
+    });
+  }, [customization, qrUrl]);
 
   const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file && file.type.startsWith('image/')) {
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        alert('Logo file size must be less than 5MB');
-        return;
-      }
-
-      setLogoFile(file);
-
-      // If we have an upload handler, upload immediately to get the URL
-      if (onUploadLogo) {
-        try {
-          setIsUploading(true);
-          const url = await onUploadLogo(file);
-          setLogoDataUrl(url);
-          setCustomization(prev => ({
-            ...prev,
-            logoSize: prev.logoSize || 40,
-            logoUrl: url
-          }));
-        } catch (error) {
-          console.error('Failed to upload logo:', error);
-          alert('Failed to upload logo');
-        } finally {
-          setIsUploading(false);
-        }
-      } else {
-        // Fallback to Data URL
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const result = e.target?.result as string;
-          setLogoDataUrl(result);
-          setCustomization(prev => ({
-            ...prev,
-            logoSize: prev.logoSize || 40,
-            logoUrl: result
-          }));
-        };
-        reader.readAsDataURL(file);
+    if (file && onUploadLogo) {
+      try {
+        setIsUploading(true);
+        const url = await onUploadLogo(file);
+        setLogoFile(file);
+        setCustomization(prev => ({
+          ...prev,
+          logoUrl: url
+        }));
+      } catch (error) {
+        console.error('Failed to upload logo:', error);
+      } finally {
+        setIsUploading(false);
       }
     }
   };
 
-  const removeLogo = () => {
-    setLogoFile(null);
-    setLogoDataUrl('');
-    setCustomization(prev => ({
-      ...prev,
-      logoSize: undefined,
-      logoUrl: undefined
-    }));
-  };
-
-  const resetToDefaults = () => {
-    setCustomization({
-      foregroundColor: '#000000',
-      backgroundColor: '#FFFFFF',
-      size: 200,
-      margin: 2
+  const downloadQR = async (format: 'png' | 'jpeg' | 'svg' | 'pdf') => {
+    await qrCode.current.download({
+      name: `qr-code`,
+      extension: format
     });
-    removeLogo();
-  };
-
-  const downloadQRCode = () => {
-    if (qrDataUrl) {
-      const link = document.createElement('a');
-      link.download = 'custom-qr-code.png';
-      link.href = qrDataUrl;
-      link.click();
-    }
-  };
-
-  const handleSave = () => {
-    const finalCustomization = { ...customization };
-    if (logoDataUrl) {
-      finalCustomization.logoUrl = logoDataUrl;
-    }
-    onSave(finalCustomization);
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full max-h-[95vh] overflow-hidden">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg md:text-xl font-semibold text-gray-800 flex items-center">
-              <Palette className="w-5 h-5 mr-2" />
-              Customize QR Code
-            </h3>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <X size={20} />
-            </button>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] flex flex-col md:flex-row overflow-hidden">
+
+        {/* Left Sidebar - Tabs */}
+        <div className="w-full md:w-20 bg-gray-50 border-r border-gray-200 flex flex-row md:flex-col items-center justify-between md:justify-start p-2 md:py-6 gap-2">
+          <div className="flex flex-row md:flex-col gap-2 w-full">
+            {TABS.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex flex-col items-center justify-center p-3 rounded-xl transition-all w-full text-xs font-medium ${activeTab === tab.id
+                    ? 'bg-pink-100 text-pink-600 shadow-sm'
+                    : 'text-gray-500 hover:bg-gray-100'
+                  }`}
+              >
+                <tab.icon className="w-6 h-6 mb-1" />
+                {tab.label}
+              </button>
+            ))}
           </div>
+          <button onClick={onClose} className="md:mt-auto p-3 text-gray-400 hover:text-gray-600">
+            <X className="w-6 h-6" />
+          </button>
         </div>
 
-        <div className="p-4 md:p-6 overflow-y-auto max-h-[calc(95vh-120px)]">
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 md:gap-8">
-            {/* Preview */}
+        {/* Middle - Configuration */}
+        <div className="flex-1 p-6 overflow-y-auto bg-white min-w-[320px]">
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-gray-800">{TABS.find(t => t.id === activeTab)?.label} Settings</h2>
+            <p className="text-gray-500 text-sm">Customize your QR code appearance</p>
+          </div>
+
+          {activeTab === 'style' && (
             <div className="space-y-6">
               <div>
-                <h4 className="text-base md:text-lg font-semibold text-gray-800 mb-4">Preview</h4>
-                <div className="flex justify-center p-4 md:p-8 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
-                  {qrDataUrl ? (
-                    <img
-                      src={qrDataUrl}
-                      alt="QR Code Preview"
-                      className="max-w-full h-auto"
-                      style={{ width: Math.min(customization.size, 250) }}
-                    />
-                  ) : (
-                    <div className="w-32 md:w-48 h-32 md:h-48 bg-gray-200 rounded-lg flex items-center justify-center">
-                      <span className="text-gray-500">Generating...</span>
-                    </div>
-                  )}
+                <label className="block text-sm font-semibold text-gray-700 mb-3">Dots Pattern</label>
+                <div className="grid grid-cols-3 gap-3">
+                  {['square', 'dots', 'rounded', 'classy', 'classy-rounded', 'extra-rounded'].map(type => (
+                    <button
+                      key={type}
+                      onClick={() => setCustomization(prev => ({
+                        ...prev,
+                        dotsOptions: { ...prev.dotsOptions, type: type as any }
+                      }))}
+                      className={`p-3 border-2 rounded-lg flex flex-col items-center gap-2 hover:bg-gray-50 transition-all ${customization.dotsOptions.type === type ? 'border-pink-500 bg-pink-50' : 'border-gray-200'
+                        }`}
+                    >
+                      <div className={`w-8 h-8 bg-gray-800 ${type === 'dots' ? 'rounded-full' :
+                          type === 'rounded' ? 'rounded-md' :
+                            type === 'extra-rounded' ? 'rounded-lg' : ''
+                        }`} />
+                      <span className="text-xs capitalize">{type.replace('-', ' ')}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              <div className="flex space-x-3">
-                <button
-                  onClick={downloadQRCode}
-                  className="flex-1 flex items-center justify-center space-x-1 md:space-x-2 px-3 md:px-4 py-2 md:py-3 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-colors text-sm md:text-base"
-                >
-                  <Download size={16} />
-                  <span>Download</span>
-                </button>
-                <button
-                  onClick={resetToDefaults}
-                  className="flex items-center justify-center space-x-1 md:space-x-2 px-3 md:px-4 py-2 md:py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors text-sm md:text-base"
-                >
-                  <RotateCcw size={16} />
-                  <span>Reset</span>
-                </button>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-3">Size & Margin</label>
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span>Size</span>
+                      <span>{customization.size}px</span>
+                    </div>
+                    <input
+                      type="range" min="200" max="1000" step="50"
+                      value={customization.size}
+                      onChange={(e) => setCustomization(prev => ({ ...prev, size: Number(e.target.value) }))}
+                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-pink-500"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span>Margin</span>
+                      <span>{customization.margin}px</span>
+                    </div>
+                    <input
+                      type="range" min="0" max="50" step="1"
+                      value={customization.margin}
+                      onChange={(e) => setCustomization(prev => ({ ...prev, margin: Number(e.target.value) }))}
+                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-pink-500"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
+          )}
 
-            {/* Customization Options */}
+          {activeTab === 'colors' && (
             <div className="space-y-6">
-              <h4 className="text-base md:text-lg font-semibold text-gray-800">Customization Options</h4>
-
-              {/* Colors */}
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Foreground Color (QR Dots)
-                  </label>
-                  <div className="relative">
-                    <button
-                      onClick={() => setShowForegroundPicker(!showForegroundPicker)}
-                      className="w-full flex items-center space-x-2 md:space-x-3 p-2 md:p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition-colors"
-                    >
-                      <div
-                        className="w-6 h-6 rounded border border-gray-300"
-                        style={{ backgroundColor: customization.foregroundColor }}
-                      />
-                      <span className="font-mono text-xs md:text-sm">{customization.foregroundColor}</span>
-                    </button>
-                    {showForegroundPicker && (
-                      <div className="absolute top-full left-0 mt-2 z-10 bg-white rounded-lg shadow-lg border border-gray-200 p-2 md:p-3">
-                        <HexColorPicker
-                          color={customization.foregroundColor}
-                          onChange={(color) => setCustomization(prev => ({ ...prev, foregroundColor: color }))}
-                        />
-                        <button
-                          onClick={() => setShowForegroundPicker(false)}
-                          className="mt-2 w-full px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
-                        >
-                          Done
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Background Color
-                  </label>
-                  <div className="relative">
-                    <button
-                      onClick={() => setShowBackgroundPicker(!showBackgroundPicker)}
-                      className="w-full flex items-center space-x-2 md:space-x-3 p-2 md:p-3 border border-gray-300 rounded-lg hover:border-gray-400 transition-colors"
-                    >
-                      <div
-                        className="w-6 h-6 rounded border border-gray-300"
-                        style={{ backgroundColor: customization.backgroundColor }}
-                      />
-                      <span className="font-mono text-xs md:text-sm">{customization.backgroundColor}</span>
-                    </button>
-                    {showBackgroundPicker && (
-                      <div className="absolute top-full left-0 mt-2 z-10 bg-white rounded-lg shadow-lg border border-gray-200 p-2 md:p-3">
-                        <HexColorPicker
-                          color={customization.backgroundColor}
-                          onChange={(color) => setCustomization(prev => ({ ...prev, backgroundColor: color }))}
-                        />
-                        <button
-                          onClick={() => setShowBackgroundPicker(false)}
-                          className="mt-2 w-full px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
-                        >
-                          Done
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Size */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Size: {customization.size}px
-                </label>
-                <input
-                  type="range"
-                  min="100"
-                  max="500"
-                  step="10"
-                  value={customization.size}
-                  onChange={(e) => setCustomization(prev => ({ ...prev, size: parseInt(e.target.value) }))}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                <label className="block text-sm font-semibold text-gray-700 mb-3">Dots Color</label>
+                <HexColorPicker
+                  color={customization.dotsOptions.color}
+                  onChange={(color) => setCustomization(prev => ({
+                    ...prev,
+                    dotsOptions: { ...prev.dotsOptions, color },
+                    foregroundColor: color
+                  }))}
+                  style={{ width: '100%', height: '150px' }}
                 />
-                <div className="flex justify-between text-xs text-gray-500 mt-1">
-                  <span>100px</span>
-                  <span>500px</span>
-                </div>
               </div>
-
-              {/* Margin */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Margin: {customization.margin}
-                </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="8"
-                  step="1"
-                  value={customization.margin}
-                  onChange={(e) => setCustomization(prev => ({ ...prev, margin: parseInt(e.target.value) }))}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                <label className="block text-sm font-semibold text-gray-700 mb-3">Background Color</label>
+                <HexColorPicker
+                  color={customization.backgroundOptions.color}
+                  onChange={(color) => setCustomization(prev => ({
+                    ...prev,
+                    backgroundOptions: { ...prev.backgroundOptions, color },
+                    backgroundColor: color
+                  }))}
+                  style={{ width: '100%', height: '150px' }}
                 />
-                <div className="flex justify-between text-xs text-gray-500 mt-1">
-                  <span>0</span>
-                  <span>8</span>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'eyes' && (
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-3">Corner Shape</label>
+                <div className="grid grid-cols-3 gap-3">
+                  {['square', 'dot', 'extra-rounded'].map(type => (
+                    <button
+                      key={type}
+                      onClick={() => setCustomization(prev => ({
+                        ...prev,
+                        cornersSquareOptions: { ...prev.cornersSquareOptions, type: type as any }
+                      }))}
+                      className={`p-3 border-2 rounded-lg flex flex-col items-center gap-2 hover:bg-gray-50 transition-all ${customization.cornersSquareOptions.type === type ? 'border-pink-500 bg-pink-50' : 'border-gray-200'
+                        }`}
+                    >
+                      <span className="text-xs capitalize">{type.replace('-', ' ')}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              {/* Logo Upload */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Center Logo (Optional) - Max 5MB
-                </label>
-                {logoDataUrl ? (
-                  <div className="space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                      <img src={logoDataUrl} alt="Logo" className="w-12 h-12 object-cover rounded border border-gray-300" />
-                      <div className="flex-1 min-w-0">
-                        <span className="text-sm text-gray-600 block truncate">{logoFile?.name || 'Uploaded Logo'}</span>
-                        <span className="text-xs text-gray-500">Size: {customization.logoSize || 40}px</span>
-                      </div>
-                      <button
-                        onClick={removeLogo}
-                        className="p-2 hover:bg-gray-200 rounded transition-colors self-end sm:self-auto"
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Logo Size: {customization.logoSize || 40}px (Recommended: 30-60px)
-                      </label>
-                      <input
-                        type="range"
-                        min="30"
-                        max="100"
-                        step="5"
-                        value={customization.logoSize || 40}
-                        onChange={(e) => setCustomization(prev => ({ ...prev, logoSize: parseInt(e.target.value) }))}
-                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-                      />
-                      <div className="flex justify-between text-xs text-gray-500 mt-1">
-                        <span>30px (Small)</span>
-                        <span>100px (Large)</span>
-                      </div>
-                    </div>
+                <label className="block text-sm font-semibold text-gray-700 mb-3">Eye Color</label>
+                <HexColorPicker
+                  color={customization.cornersSquareOptions.color}
+                  onChange={(color) => setCustomization(prev => ({
+                    ...prev,
+                    cornersSquareOptions: { ...prev.cornersSquareOptions, color },
+                    cornersDotOptions: { ...prev.cornersDotOptions, color }
+                  }))}
+                  style={{ width: '100%', height: '120px' }}
+                />
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'logo' && (
+            <div className="space-y-6">
+              <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-pink-400 transition-colors">
+                {customization.logoUrl ? (
+                  <div className="relative inline-block">
+                    <img src={customization.logoUrl} alt="Logo" className="h-20 w-20 object-contain rounded-lg shadow-sm" />
+                    <button
+                      onClick={() => setCustomization(prev => ({ ...prev, logoUrl: undefined }))}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600"
+                    >
+                      <X size={12} />
+                    </button>
                   </div>
                 ) : (
-                  <div className="relative">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleLogoUpload}
-                      className="hidden"
-                      id="logo-upload"
-                    />
-                    <label
-                      htmlFor="logo-upload"
-                      className="flex items-center justify-center space-x-2 w-full p-3 md:p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 cursor-pointer transition-colors"
-                    >
-                      <Upload size={20} className="text-gray-400" />
-                      <span className="text-gray-600 text-sm md:text-base">Upload logo image</span>
+                  <>
+                    <Upload className="mx-auto h-12 w-12 text-gray-400 mb-3" />
+                    <p className="text-gray-600 font-medium">Upload Logo</p>
+                    <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" id="logo-upload-input" />
+                    <label htmlFor="logo-upload-input" className="mt-4 inline-block px-4 py-2 bg-pink-500 text-white rounded-lg cursor-pointer hover:bg-pink-600 transition-colors">
+                      Choose File
                     </label>
-                  </div>
+                  </>
                 )}
               </div>
+
+              {customization.logoUrl && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Logo Size</label>
+                    <input
+                      type="range" min="0.1" max="0.5" step="0.05"
+                      value={customization.imageOptions.imageSize}
+                      onChange={(e) => setCustomization(prev => ({ ...prev, imageOptions: { ...prev.imageOptions, imageSize: Number(e.target.value) } }))}
+                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-pink-500"
+                    />
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="hide-dots"
+                      checked={customization.imageOptions.hideBackgroundDots}
+                      onChange={(e) => setCustomization(prev => ({ ...prev, imageOptions: { ...prev.imageOptions, hideBackgroundDots: e.target.checked } }))}
+                      className="rounded text-pink-500 focus:ring-pink-500"
+                    />
+                    <label htmlFor="hide-dots" className="text-sm text-gray-700">Hide dots behind logo</label>
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
+          )}
         </div>
 
-        <div className="p-4 md:p-6 border-t border-gray-200 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
-          <button
-            onClick={onClose}
-            className="px-4 md:px-6 py-2 text-gray-600 hover:text-gray-800 transition-colors text-sm md:text-base"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            className="px-4 md:px-6 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-colors text-sm md:text-base"
-          >
-            Save Customization
-          </button>
+        {/* Right Side - Preview */}
+        <div className="w-full md:w-[400px] bg-gray-100 p-8 flex flex-col items-center justify-center border-l border-gray-200">
+          <div className="bg-white p-6 rounded-2xl shadow-xl mb-8">
+            <div ref={ref} className="qr-code-container" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 w-full max-w-xs">
+            <button onClick={() => downloadQR('png')} className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors">
+              <Download size={16} /> PNG
+            </button>
+            <button onClick={() => downloadQR('svg')} className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors">
+              <Download size={16} /> SVG
+            </button>
+            <button onClick={() => downloadQR('pdf')} className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors">
+              <Download size={16} /> PDF
+            </button>
+            <button onClick={() => downloadQR('jpeg')} className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors">
+              <Download size={16} /> JPEG
+            </button>
+          </div>
+
+          <div className="mt-8 flex gap-3 w-full max-w-xs">
+            <button onClick={onClose} className="flex-1 py-3 text-gray-600 hover:bg-gray-200 rounded-lg transition-colors">
+              Cancel
+            </button>
+            <button
+              onClick={() => onSave(customization)}
+              className="flex-[2] py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-lg shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all font-semibold flex items-center justify-center gap-2"
+            >
+              <Check size={18} /> Save Design
+            </button>
+          </div>
         </div>
       </div>
     </div>
