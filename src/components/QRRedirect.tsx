@@ -32,7 +32,7 @@ export const QRRedirect: React.FC = () => {
 
         // Get user info for analytics
         const userAgent = navigator.userAgent;
-        
+
         // Extract browser name
         const getBrowserName = (userAgent: string): string => {
           if (userAgent.includes('Chrome') && !userAgent.includes('Edge')) return 'Chrome';
@@ -42,7 +42,7 @@ export const QRRedirect: React.FC = () => {
           if (userAgent.includes('Opera')) return 'Opera';
           return 'Other';
         };
-        
+
         // Better device type detection
         const getDeviceType = (userAgent: string): string => {
           if (/iPad/.test(userAgent)) return 'tablet';
@@ -55,7 +55,7 @@ export const QRRedirect: React.FC = () => {
           if (/BlackBerry|BB10/.test(userAgent)) return 'mobile';
           return 'desktop';
         };
-        
+
         // Get IP and location (using a free service)
         let locationData = null;
         try {
@@ -67,7 +67,24 @@ export const QRRedirect: React.FC = () => {
           console.warn('Could not fetch location data:', err);
         }
 
-        // Record analytics
+        // Extended device and browser detection
+        const getDeviceDetails = () => {
+          const ua = navigator.userAgent;
+          let vendor = 'Unknown';
+          let model = 'Unknown';
+
+          if (/iPhone/.test(ua)) { vendor = 'Apple'; model = 'iPhone'; }
+          else if (/iPad/.test(ua)) { vendor = 'Apple'; model = 'iPad'; }
+          else if (/Samsung/.test(ua)) { vendor = 'Samsung'; model = 'Galaxy'; }
+          else if (/Pixel/.test(ua)) { vendor = 'Google'; model = 'Pixel'; }
+          else if (/Huawei/.test(ua)) { vendor = 'Huawei'; model = 'Device'; }
+
+          return { vendor, model };
+        };
+
+        const { vendor, model } = getDeviceDetails();
+
+        // Record extended analytics
         const analyticsData = {
           qr_code_id: qrCode.id,
           ip_address: locationData?.ip || null,
@@ -76,7 +93,14 @@ export const QRRedirect: React.FC = () => {
           device_type: getDeviceType(userAgent),
           operating_system: navigator.platform || 'Unknown',
           browser: getBrowserName(navigator.userAgent),
-          user_agent: navigator.userAgent
+          user_agent: navigator.userAgent,
+          // New fields
+          referrer: document.referrer || 'Direct',
+          screen_resolution: `${window.screen.width}x${window.screen.height}`,
+          language: navigator.language,
+          device_vendor: vendor,
+          device_model: model,
+          session_id: crypto.randomUUID() // Simple session tracking
         };
 
         // Insert analytics (don't wait for it to complete)
@@ -89,7 +113,7 @@ export const QRRedirect: React.FC = () => {
 
         // Redirect to destination
         window.location.href = qrCode.destination_url;
-        
+
       } catch (err) {
         console.error('Redirect error:', err);
         setError('An error occurred while processing the QR code');
@@ -120,8 +144,8 @@ export const QRRedirect: React.FC = () => {
           </div>
           <h1 className="text-2xl font-bold text-gray-800 mb-2">QR Code Error</h1>
           <p className="text-gray-600 mb-4">{error}</p>
-          <a 
-            href="/" 
+          <a
+            href="/"
             className="inline-block px-6 py-3 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-colors"
           >
             Go to Homepage
