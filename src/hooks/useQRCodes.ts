@@ -7,16 +7,39 @@ export const useQRCodes = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchQRCodes = async () => {
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const PAGE_SIZE = 12;
+
+  const fetchQRCodes = async (currentPage = 1) => {
     try {
       setLoading(true);
+
+      // Get total count first
+      const { count, error: countError } = await supabase
+        .from('qr_codes')
+        .select('*', { count: 'exact', head: true });
+
+      if (countError) throw countError;
+
+      const total = count || 0;
+      setTotalPages(Math.ceil(total / PAGE_SIZE));
+      setHasMore(currentPage * PAGE_SIZE < total);
+
+      // Fetchpaginated data
+      const from = (currentPage - 1) * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+
       const { data, error } = await supabase
         .from('qr_codes')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(from, to);
 
       if (error) throw error;
-      
+
       const transformedData = (data || []).map(item => ({
         id: item.id,
         name: item.name,
@@ -27,12 +50,36 @@ export const useQRCodes = () => {
         updatedAt: item.updated_at,
         customization: item.customization
       }));
-      
+
       setQRCodes(transformedData);
+      setPage(currentPage);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const uploadLogo = async (file: File): Promise<string> => {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `logos/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('qr-logos')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from('qr-logos')
+        .getPublicUrl(filePath);
+
+      return data.publicUrl;
+    } catch (error) {
+      console.error('Error uploading logo:', error);
+      throw new Error('Failed to upload logo');
     }
   };
 
@@ -61,19 +108,11 @@ export const useQRCodes = () => {
         .single();
 
       if (error) throw error;
-      
-      const transformedData = {
-        id: data.id,
-        name: data.name,
-        shortCode: data.short_code,
-        destinationUrl: data.destination_url,
-        isActive: data.is_active,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at
-      };
-      
-      setQRCodes(prev => [transformedData, ...prev]);
-      return transformedData;
+
+      // Refetch to update list
+      fetchQRCodes(1);
+
+      return data;
     } catch (err) {
       throw new Error(err instanceof Error ? err.message : 'Failed to add QR code');
     }
@@ -94,7 +133,7 @@ export const useQRCodes = () => {
         dbUpdates.is_active = updates.isActive;
         delete dbUpdates.isActive;
       }
-      
+
       const { data, error } = await supabase
         .from('qr_codes')
         .update(dbUpdates)
@@ -103,19 +142,9 @@ export const useQRCodes = () => {
         .single();
 
       if (error) throw error;
-      
-      const transformedData = {
-        id: data.id,
-        name: data.name,
-        shortCode: data.short_code,
-        destinationUrl: data.destination_url,
-        isActive: data.is_active,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at
-      };
-      
-      setQRCodes(prev => prev.map(qr => qr.id === id ? transformedData : qr));
-      return transformedData;
+
+      fetchQRCodes(page); // Refresh current page
+      return data;
     } catch (err) {
       throw new Error(err instanceof Error ? err.message : 'Failed to update QR code');
     }
@@ -129,7 +158,7 @@ export const useQRCodes = () => {
         .eq('id', id);
 
       if (error) throw error;
-      setQRCodes(prev => prev.filter(qr => qr.id !== id));
+      fetchQRCodes(page);
     } catch (err) {
       throw new Error(err instanceof Error ? err.message : 'Failed to delete QR code');
     }
@@ -144,7 +173,7 @@ export const useQRCodes = () => {
         .order('scanned_at', { ascending: false });
 
       if (error) throw error;
-      
+
       return (data || []).map(item => ({
         id: item.id,
         qrCodeId: item.qr_code_id,
@@ -224,17 +253,17 @@ export const useQRCodes = () => {
       for (let i = 29; i >= 0; i--) {
         const date = new Date(today.getTime() - i * 24 * 60 * 60 * 1000);
         const dateStr = date.toISOString().split('T')[0];
-        const scans = analytics.filter(a => 
+        const scans = analytics.filter(a =>
           a.scanned_at.startsWith(dateStr)
         ).length;
-        scansByDate.push({ 
-          date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), 
-          scans 
+        scansByDate.push({
+          date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          scans
         });
       }
 
       // Last scan time
-      const lastScanTime = analytics.length > 0 
+      const lastScanTime = analytics.length > 0
         ? analytics.sort((a, b) => new Date(b.scanned_at).getTime() - new Date(a.scanned_at).getTime())[0].scanned_at
         : undefined;
 
@@ -264,52 +293,11 @@ export const useQRCodes = () => {
         .single();
 
       if (error) throw error;
-      
-      const transformedData = {
-        id: data.id,
-        name: data.name,
-        shortCode: data.short_code,
-        destinationUrl: data.destination_url,
-        isActive: data.is_active,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at,
-        customization: data.customization
-      };
-      
-      setQRCodes(prev => prev.map(qr => qr.id === id ? transformedData : qr));
-      return transformedData;
+
+      fetchQRCodes(page); // Refresh
+      return data;
     } catch (err) {
       throw new Error(err instanceof Error ? err.message : 'Failed to update QR customization');
-    }
-  };
-
-  const generateQRCodeImage = async (qr: QRCode, customization?: any): Promise<string> => {
-    const qrUrl = `${window.location.origin}/qr/${qr.shortCode}`;
-    const custom = customization || qr.customization || {
-      foregroundColor: '#000000',
-      backgroundColor: '#FFFFFF',
-      size: 200,
-      margin: 2
-    };
-    
-    try {
-      return await QRCodeLib.toDataURL(qrUrl, {
-        width: custom.size || 200,
-        margin: custom.margin || 2,
-        color: {
-          dark: custom.foregroundColor || '#000000',
-          light: custom.backgroundColor || '#FFFFFF'
-        },
-        errorCorrectionLevel: 'H',
-        type: 'image/png',
-        quality: 0.92,
-        rendererOpts: {
-          quality: 0.92
-        }
-      });
-    } catch (error) {
-      console.error('Failed to generate QR code:', error);
-      return '';
     }
   };
 
@@ -318,13 +306,17 @@ export const useQRCodes = () => {
   };
 
   useEffect(() => {
-    fetchQRCodes();
+    fetchQRCodes(1);
   }, []);
 
   return {
     qrCodes,
     loading,
     error,
+    page,
+    totalPages,
+    hasMore,
+    fetchQRCodes,
     addQRCode,
     updateQRCode,
     deleteQRCode,
@@ -332,6 +324,7 @@ export const useQRCodes = () => {
     getQRAnalyticsSummary,
     updateQRCustomization,
     generateShortCode,
-    refetch: fetchQRCodes
+    uploadLogo,
+    refetch: () => fetchQRCodes(page)
   };
 };
