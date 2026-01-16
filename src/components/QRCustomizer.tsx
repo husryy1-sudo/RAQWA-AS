@@ -66,34 +66,33 @@ export const QRCustomizer: React.FC<QRCustomizerProps> = ({
     }
   }, []);
 
-  const [customization, setCustomization] = useState<QRCustomization>(
-    initialCustomization || {
-      size: 300,
-      margin: 2,
-      backgroundColor: '#FFFFFF',
-      foregroundColor: '#000000',
-      dotsOptions: {
-        type: 'square',
-        color: '#000000'
-      },
-      backgroundOptions: {
-        color: '#FFFFFF'
-      },
-      cornersSquareOptions: {
-        type: 'square',
-        color: '#000000'
-      },
-      cornersDotOptions: {
-        type: 'square',
-        color: '#000000'
-      },
-      imageOptions: {
-        hideBackgroundDots: true,
-        imageSize: 0.4,
-        margin: 5
-      }
-    }
-  );
+  // Default values
+  const defaultCustomization: QRCustomization = {
+    size: 300,
+    margin: 2,
+    backgroundColor: '#FFFFFF',
+    foregroundColor: '#000000',
+    dotsOptions: { type: 'square', color: '#000000' },
+    backgroundOptions: { color: '#FFFFFF' },
+    cornersSquareOptions: { type: 'square', color: '#000000' },
+    cornersDotOptions: { type: 'square', color: '#000000' },
+    imageOptions: { hideBackgroundDots: true, imageSize: 0.4, margin: 5 }
+  };
+
+  const [customization, setCustomization] = useState<QRCustomization>(() => {
+    if (!initialCustomization) return defaultCustomization;
+
+    // Deep merge to ensure all nested properties exist
+    return {
+      ...defaultCustomization,
+      ...initialCustomization,
+      dotsOptions: { ...defaultCustomization.dotsOptions, ...initialCustomization.dotsOptions },
+      backgroundOptions: { ...defaultCustomization.backgroundOptions, ...initialCustomization.backgroundOptions },
+      cornersSquareOptions: { ...defaultCustomization.cornersSquareOptions, ...initialCustomization.cornersSquareOptions },
+      cornersDotOptions: { ...defaultCustomization.cornersDotOptions, ...initialCustomization.cornersDotOptions },
+      imageOptions: { ...defaultCustomization.imageOptions, ...initialCustomization.imageOptions }
+    };
+  });
 
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
