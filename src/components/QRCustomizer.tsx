@@ -263,37 +263,77 @@ export const QRCustomizer: React.FC<QRCustomizerProps> = ({
           )}
 
           {activeTab === 'eyes' && (
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-3">Corner Shape</label>
-                <div className="grid grid-cols-3 gap-3">
-                  {['square', 'dot', 'extra-rounded'].map(type => (
-                    <button
-                      key={type}
-                      onClick={() => setCustomization(prev => ({
-                        ...prev,
-                        cornersSquareOptions: { ...prev.cornersSquareOptions, type: type as any }
-                      }))}
-                      className={`p-3 border-2 rounded-lg flex flex-col items-center gap-2 hover:bg-gray-50 transition-all ${customization.cornersSquareOptions.type === type ? 'border-pink-500 bg-pink-50' : 'border-gray-200'
-                        }`}
-                    >
-                      <span className="text-xs capitalize">{type.replace('-', ' ')}</span>
-                    </button>
-                  ))}
+            <div className="space-y-8">
+              {/* Outer Frame Section */}
+              <div className="space-y-4">
+                <h3 className="text-base font-semibold text-gray-900 border-b pb-2">Outer Eye (Frame)</h3>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">Shape</label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {['square', 'dot', 'extra-rounded'].map(type => (
+                      <button
+                        key={`corner-square-${type}`}
+                        onClick={() => setCustomization(prev => ({
+                          ...prev,
+                          cornersSquareOptions: { ...prev.cornersSquareOptions, type: type as any }
+                        }))}
+                        className={`p-3 border-2 rounded-lg flex flex-col items-center gap-2 hover:bg-gray-50 transition-all ${customization.cornersSquareOptions.type === type ? 'border-pink-500 bg-pink-50 ring-1 ring-pink-200' : 'border-gray-200'
+                          }`}
+                      >
+                        <div className={`w-6 h-6 border-4 border-gray-800 ${type === 'dot' ? 'rounded-full' :
+                            type === 'extra-rounded' ? 'rounded-lg' : ''
+                          }`}></div>
+                        <span className="text-xs capitalize">{type.replace('-', ' ')}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Color</label>
+                  <HexColorPicker
+                    color={customization.cornersSquareOptions.color}
+                    onChange={(color) => setCustomization(prev => ({
+                      ...prev,
+                      cornersSquareOptions: { ...prev.cornersSquareOptions, color }
+                    }))}
+                    style={{ width: '100%', height: '120px' }}
+                  />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-3">Eye Color</label>
-                <HexColorPicker
-                  color={customization.cornersSquareOptions.color}
-                  onChange={(color) => setCustomization(prev => ({
-                    ...prev,
-                    cornersSquareOptions: { ...prev.cornersSquareOptions, color },
-                    cornersDotOptions: { ...prev.cornersDotOptions, color }
-                  }))}
-                  style={{ width: '100%', height: '120px' }}
-                />
+              {/* Inner Center Section */}
+              <div className="space-y-4">
+                <h3 className="text-base font-semibold text-gray-900 border-b pb-2">Inner Eye (Center)</h3>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">Shape</label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {['square', 'dot'].map(type => (
+                      <button
+                        key={`corner-dot-${type}`}
+                        onClick={() => setCustomization(prev => ({
+                          ...prev,
+                          cornersDotOptions: { ...prev.cornersDotOptions, type: type as any }
+                        }))}
+                        className={`p-3 border-2 rounded-lg flex flex-col items-center gap-2 hover:bg-gray-50 transition-all ${customization.cornersDotOptions.type === type ? 'border-pink-500 bg-pink-50 ring-1 ring-pink-200' : 'border-gray-200'
+                          }`}
+                      >
+                        <div className={`w-4 h-4 bg-gray-800 ${type === 'dot' ? 'rounded-full' : ''}`}></div>
+                        <span className="text-xs capitalize">{type}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Color</label>
+                  <HexColorPicker
+                    color={customization.cornersDotOptions.color}
+                    onChange={(color) => setCustomization(prev => ({
+                      ...prev,
+                      cornersDotOptions: { ...prev.cornersDotOptions, color }
+                    }))}
+                    style={{ width: '100%', height: '120px' }}
+                  />
+                </div>
               </div>
             </div>
           )}
