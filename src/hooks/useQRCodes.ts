@@ -1,351 +1,99 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
-import { QRCode, QRAnalytics, QRAnalyticsSummary, QRCustomization } from '../types';
+export interface SocialLink {
+  id: string;
+  name: string;
+  url: string;
+  icon: string;
+  isVisible: boolean;
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+}
 
-export const useQRCodes = () => {
-  const [qrCodes, setQRCodes] = useState<QRCode[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export interface UserProfile {
+  id: string;
+  username: string;
+  description: string;
+  updatedAt: string;
+}
 
-  // Pagination & Filter State
-  const [page, setPage] = useState(1);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [totalPages, setTotalPages] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
-  const PAGE_SIZE = 12;
+export interface QRCode {
+  id: string;
+  name: string;
+  shortCode: string;
+  destinationUrl: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  customization?: QRCustomization;
+}
 
-  const fetchQRCodes = async (
-    pageOverride?: number,
-    searchOverride?: string,
-    statusOverride?: string
-  ) => {
-    try {
-      setLoading(true);
+export interface QRAnalytics {
+  id: string;
+  qrCodeId: string;
+  ipAddress?: string;
+  country?: string;
+  city?: string;
+  deviceType?: string;
+  operatingSystem?: string;
+  userAgent?: string;
+  browser?: string;
+  scannedAt: string;
+}
 
-      const currentPage = pageOverride ?? page;
-      const currentSearch = searchOverride ?? searchQuery;
-      const currentStatus = statusOverride ?? statusFilter;
+export interface QRCustomization {
+  // Core
+  size: number;
+  margin: number;
 
-      // Calculate range
-      const from = (currentPage - 1) * PAGE_SIZE;
-      const to = from + PAGE_SIZE - 1;
-
-      // Build query
-      let query = supabase
-        .from('qr_codes')
-        .select('*', { count: 'exact' });
-
-      if (currentSearch) {
-        query = query.or(`name.ilike.%${currentSearch}%,short_code.ilike.%${currentSearch}%`);
-      }
-
-      if (currentStatus !== 'all') {
-        query = query.eq('is_active', currentStatus === 'active');
-      }
-
-      const { data, error, count } = await query
-        .order('created_at', { ascending: false })
-        .range(from, to);
-
-      if (error) throw error;
-
-      const total = count || 0;
-      setTotalPages(Math.ceil(total / PAGE_SIZE));
-      setHasMore(currentPage * PAGE_SIZE < total);
-
-      const transformedData = (data || []).map(item => ({
-        id: item.id,
-        name: item.name,
-        shortCode: item.short_code,
-        destinationUrl: item.destination_url,
-        isActive: item.is_active,
-        createdAt: item.created_at,
-        updatedAt: item.updated_at,
-        customization: item.customization
-      }));
-
-      setQRCodes(transformedData);
-
-      // Update state
-      setPage(currentPage);
-      if (searchOverride !== undefined) setSearchQuery(searchOverride);
-      if (statusOverride !== undefined) setStatusFilter(statusOverride);
-
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
-    }
+  // Colors & Background
+  backgroundColor: string;
+  foregroundColor: string; // Helper for simple color
+  dotsOptions: {
+    type: 'square' | 'dots' | 'rounded' | 'classy' | 'classy-rounded' | 'extra-rounded';
+    color: string;
+    gradient?: {
+      type: 'linear' | 'radial';
+      rotation: number;
+      colorStops: { offset: number; color: string }[];
+    };
+  };
+  backgroundOptions: {
+    color: string;
+    gradient?: {
+      type: 'linear' | 'radial';
+      rotation: number;
+      colorStops: { offset: number; color: string }[];
+    };
   };
 
-  const uploadLogo = async (file: File): Promise<string> => {
-    try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `logos/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('qr-logos')
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data } = supabase.storage
-        .from('qr-logos')
-        .getPublicUrl(filePath);
-
-      return data.publicUrl;
-    } catch (error) {
-      console.error('Error uploading logo:', error);
-      throw new Error('Failed to upload logo');
-    }
+  // Corners (Eyes)
+  cornersSquareOptions: {
+    type: 'dot' | 'square' | 'extra-rounded';
+    color: string;
+  };
+  cornersDotOptions: {
+    type: 'dot' | 'square';
+    color: string;
   };
 
-  const addQRCode = async (qrCode: Omit<QRCode, 'id' | 'createdAt' | 'updatedAt'>) => {
-    try {
-      const defaultCustomization = {
-        foregroundColor: '#000000',
-        backgroundColor: '#FFFFFF',
-        size: 200,
-        margin: 2,
-        logoSize: 40
-      };
-
-      const { data, error } = await supabase
-        .from('qr_codes')
-        .insert([{
-          name: qrCode.name,
-          short_code: qrCode.shortCode,
-          destination_url: qrCode.destinationUrl,
-          is_active: qrCode.isActive,
-          customization: defaultCustomization,
-          logo_url: null,
-          logo_size: 40
-        }])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Refetch to update list
-      fetchQRCodes(1);
-
-      return data;
-    } catch (err) {
-      throw new Error(err instanceof Error ? err.message : 'Failed to add QR code');
-    }
+  // Logo
+  logoUrl?: string; // Stored in DB
+  imageOptions: {
+    hideBackgroundDots: boolean;
+    imageSize: number;
+    margin: number;
+    crossOrigin?: string;
   };
+}
 
-  const updateQRCode = async (id: string, updates: Partial<QRCode>) => {
-    try {
-      const dbUpdates: Record<string, any> = { ...updates };
-      if ('shortCode' in updates) {
-        dbUpdates.short_code = updates.shortCode;
-        delete dbUpdates.shortCode;
-      }
-      if ('destinationUrl' in updates) {
-        dbUpdates.destination_url = updates.destinationUrl;
-        delete dbUpdates.destinationUrl;
-      }
-      if ('isActive' in updates) {
-        dbUpdates.is_active = updates.isActive;
-        delete dbUpdates.isActive;
-      }
-
-      const { data, error } = await supabase
-        .from('qr_codes')
-        .update(dbUpdates)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      fetchQRCodes(page); // Refresh current page
-      return data;
-    } catch (err) {
-      throw new Error(err instanceof Error ? err.message : 'Failed to update QR code');
-    }
-  };
-
-  const deleteQRCode = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('qr_codes')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-      fetchQRCodes(page);
-    } catch (err) {
-      throw new Error(err instanceof Error ? err.message : 'Failed to delete QR code');
-    }
-  };
-
-  const getQRAnalytics = async (qrCodeId: string): Promise<QRAnalytics[]> => {
-    try {
-      const { data, error } = await supabase
-        .from('qr_analytics')
-        .select('*')
-        .eq('qr_code_id', qrCodeId)
-        .order('scanned_at', { ascending: false });
-
-      if (error) throw error;
-
-      return (data || []).map(item => ({
-        id: item.id,
-        qrCodeId: item.qr_code_id,
-        ipAddress: item.ip_address,
-        country: item.country,
-        city: item.city,
-        deviceType: item.device_type,
-        operatingSystem: item.operating_system,
-        userAgent: item.user_agent,
-        browser: item.browser,
-        scannedAt: item.scanned_at
-      }));
-    } catch (err) {
-      throw new Error(err instanceof Error ? err.message : 'Failed to fetch analytics');
-    }
-  };
-
-  const getQRAnalyticsSummary = async (qrCodeId: string): Promise<QRAnalyticsSummary> => {
-    try {
-      const { data, error } = await supabase
-        .from('qr_analytics')
-        .select('*')
-        .eq('qr_code_id', qrCodeId);
-
-      if (error) throw error;
-
-      const analytics = data || [];
-      const now = new Date();
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-      const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-      // Calculate summary statistics
-      const totalScans = analytics.length;
-      const todayScans = analytics.filter(a => new Date(a.scanned_at) >= today).length;
-      const weekScans = analytics.filter(a => new Date(a.scanned_at) >= weekAgo).length;
-      const monthScans = analytics.filter(a => new Date(a.scanned_at) >= monthAgo).length;
-
-      // Top countries
-      const countryCount = analytics.reduce((acc: Record<string, number>, a) => {
-        if (a.country) {
-          acc[a.country] = (acc[a.country] || 0) + 1;
-        }
-        return acc;
-      }, {} as Record<string, number>);
-      const topCountries = Object.entries(countryCount)
-        .map(([country, count]) => ({ country, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 5);
-
-      // Top devices
-      const deviceCount = analytics.reduce((acc: Record<string, number>, a) => {
-        if (a.device_type) {
-          acc[a.device_type] = (acc[a.device_type] || 0) + 1;
-        }
-        return acc;
-      }, {} as Record<string, number>);
-      const topDevices = Object.entries(deviceCount)
-        .map(([device, count]) => ({ device, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 5);
-
-      // Top browsers
-      const browserCount = analytics.reduce((acc: Record<string, number>, a) => {
-        if (a.browser) {
-          acc[a.browser] = (acc[a.browser] || 0) + 1;
-        }
-        return acc;
-      }, {} as Record<string, number>);
-      const topBrowsers = Object.entries(browserCount)
-        .map(([browser, count]) => ({ browser, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 5);
-
-      // Scans by date (last 30 days)
-      const scansByDate: Array<{ date: string; scans: number }> = [];
-      for (let i = 29; i >= 0; i--) {
-        const date = new Date(today.getTime() - i * 24 * 60 * 60 * 1000);
-        const dateStr = date.toISOString().split('T')[0];
-        const scans = analytics.filter(a =>
-          a.scanned_at.startsWith(dateStr)
-        ).length;
-        scansByDate.push({
-          date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          scans
-        });
-      }
-
-      // Last scan time
-      const lastScanTime = analytics.length > 0
-        ? analytics.sort((a, b) => new Date(b.scanned_at).getTime() - new Date(a.scanned_at).getTime())[0].scanned_at
-        : undefined;
-
-      return {
-        totalScans,
-        todayScans,
-        weekScans,
-        monthScans,
-        topCountries,
-        topDevices,
-        topBrowsers,
-        scansByDate,
-        lastScanTime
-      };
-    } catch (err) {
-      throw new Error(err instanceof Error ? err.message : 'Failed to fetch analytics summary');
-    }
-  };
-
-  const updateQRCustomization = async (id: string, customization: QRCustomization) => {
-    try {
-      const { data, error } = await supabase
-        .from('qr_codes')
-        .update({ customization })
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      fetchQRCodes(page); // Refresh
-      return data;
-    } catch (err) {
-      throw new Error(err instanceof Error ? err.message : 'Failed to update QR customization');
-    }
-  };
-
-  const generateShortCode = (): string => {
-    return Math.random().toString(36).substring(2, 8).toLowerCase();
-  };
-
-  useEffect(() => {
-    fetchQRCodes(1);
-  }, []);
-
-  return {
-    qrCodes,
-    loading,
-    error,
-    page,
-    totalPages,
-    hasMore,
-    fetchQRCodes,
-    addQRCode,
-    updateQRCode,
-    deleteQRCode,
-    getQRAnalytics,
-    getQRAnalyticsSummary,
-    updateQRCustomization,
-    generateShortCode,
-    uploadLogo,
-    refetch: () => fetchQRCodes(page),
-    searchQuery,
-    statusFilter
-  };
-};
+export interface QRAnalyticsSummary {
+  totalScans: number;
+  todayScans: number;
+  weekScans: number;
+  monthScans: number;
+  topCountries: Array<{ country: string; count: number }>;
+  topDevices: Array<{ device: string; count: number }>;
+  topBrowsers: Array<{ browser: string; count: number }>;
+  scansByDate: Array<{ date: string; scans: number }>;
+  lastScanTime?: string;
+}
