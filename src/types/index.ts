@@ -68,11 +68,11 @@ export interface QRCustomization {
 
   // Corners (Eyes)
   cornersSquareOptions: {
-    type: 'dot' | 'square' | 'extra-rounded';
+    type: 'dot' | 'square' | 'extra-rounded' | 'classy' | 'classy-rounded' | 'rounded' | string;
     color: string;
   };
   cornersDotOptions: {
-    type: 'dot' | 'square';
+    type: 'dot' | 'square' | 'rounded' | string;
     color: string;
   };
 
