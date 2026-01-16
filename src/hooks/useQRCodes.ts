@@ -1,341 +1,31 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
-import { QRCode, QRAnalytics, QRAnalyticsSummary, QRCustomization } from '../types';
+import React, { useState } from 'react';
+import { useQRCodes } from '../hooks/useQRCodes';
+import { QRCode, QRAnalytics, QRAnalyticsSummary } from '../types';
+import {
+  Plus,
+  Edit2,
+  Trash2,
+  Eye,
+  EyeOff,
+  Save,
+  X,
+  QrCode,
+  BarChart3,
+  ExternalLink,
+  Copy,
+  Download,
+  Palette,
+  Search,
+  Filter
+} from 'lucide-react';
+import QRCodeLib from 'qrcode';
+import { QRAnalyticsDashboard } from './QRAnalyticsDashboard';
+import { QRCustomizer } from './QRCustomizer';
 
-export const useQRCodes = () => {
-  const [qrCodes, setQRCodes] = useState<QRCode[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Pagination & Filter State
-  const [page, setPage] = useState(1);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [totalPages, setTotalPages] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
-  const PAGE_SIZE = 12;
-
-  const fetchQRCodes = async (
-    pageOverride?: number,
-    searchOverride?: string,
-    statusOverride?: string
-  ) => {
-    try {
-      setLoading(true);
-
-      const currentPage = pageOverride ?? page;
-      const currentSearch = searchOverride ?? searchQuery;
-      const currentStatus = statusOverride ?? statusFilter;
-
-      // Calculate range
-      const from = (currentPage - 1) * PAGE_SIZE;
-      const to = from + PAGE_SIZE - 1;
-
-      // Build query
-      let query = supabase
-        .from('qr_codes')
-        .select('*', { count: 'exact' });
-
-      if (currentSearch) {
-        query = query.or(`name.ilike.%${currentSearch}%,short_code.ilike.%${currentSearch}%`);
-      }
-
-      if (currentStatus !== 'all') {
-        query = query.eq('is_active', currentStatus === 'active');
-      }
-
-      const { data, error, count } = await query
-        .order('created_at', { ascending: false })
-        .range(from, to);
-
-      if (error) throw error;
-
-      const total = count || 0;
-      setTotalPages(Math.ceil(total / PAGE_SIZE));
-      setHasMore(currentPage * PAGE_SIZE < total);
-
-      const transformedData = (data || []).map(item => ({
-        id: item.id,
-        name: item.name,
-        shortCode: item.short_code,
-        destinationUrl: item.destination_url,
-        isActive: item.is_active,
-        createdAt: item.created_at,
-        updatedAt: item.updated_at,
-        customization: item.customization
-      }));
-
-      setQRCodes(transformedData);
-
-      // Update state
-      setPage(currentPage);
-      if (searchOverride !== undefined) setSearchQuery(searchOverride);
-      if (statusOverride !== undefined) setStatusFilter(statusOverride);
-
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const uploadLogo = async (file: File): Promise<string> => {
-    try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `logos/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('qr-logos')
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data } = supabase.storage
-        .from('qr-logos')
-        .getPublicUrl(filePath);
-
-      return data.publicUrl;
-    } catch (error) {
-      console.error('Error uploading logo:', error);
-      throw new Error('Failed to upload logo');
-    }
-  };
-
-  const addQRCode = async (qrCode: Omit<QRCode, 'id' | 'createdAt' | 'updatedAt'>) => {
-    try {
-      const defaultCustomization = {
-        foregroundColor: '#000000',
-        backgroundColor: '#FFFFFF',
-        size: 200,
-        margin: 2,
-        logoSize: 40
-      };
-
-      const { data, error } = await supabase
-        .from('qr_codes')
-        .insert([{
-          name: qrCode.name,
-          short_code: qrCode.shortCode,
-          destination_url: qrCode.destinationUrl,
-          is_active: qrCode.isActive,
-          customization: defaultCustomization,
-          logo_url: null,
-          logo_size: 40
-        }])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Refetch to update list
-      fetchQRCodes(1);
-
-      return data;
-    } catch (err) {
-      throw new Error(err instanceof Error ? err.message : 'Failed to add QR code');
-    }
-  };
-
-  const updateQRCode = async (id: string, updates: Partial<QRCode>) => {
-    try {
-      const dbUpdates: any = { ...updates };
-      if ('shortCode' in updates) {
-        dbUpdates.short_code = updates.shortCode;
-        delete dbUpdates.shortCode;
-      }
-      if ('destinationUrl' in updates) {
-        dbUpdates.destination_url = updates.destinationUrl;
-        delete dbUpdates.destinationUrl;
-      }
-      if ('isActive' in updates) {
-        dbUpdates.is_active = updates.isActive;
-        delete dbUpdates.isActive;
-      }
-
-      const { data, error } = await supabase
-        .from('qr_codes')
-        .update(dbUpdates)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      fetchQRCodes(page); // Refresh current page
-      return data;
-    } catch (err) {
-      throw new Error(err instanceof Error ? err.message : 'Failed to update QR code');
-    }
-  };
-
-  const deleteQRCode = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('qr_codes')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-      fetchQRCodes(page);
-    } catch (err) {
-      throw new Error(err instanceof Error ? err.message : 'Failed to delete QR code');
-    }
-  };
-
-  const getQRAnalytics = async (qrCodeId: string): Promise<QRAnalytics[]> => {
-    try {
-      const { data, error } = await supabase
-        .from('qr_analytics')
-        .select('*')
-        .eq('qr_code_id', qrCodeId)
-        .order('scanned_at', { ascending: false });
-
-      if (error) throw error;
-
-      return (data || []).map(item => ({
-        id: item.id,
-        qrCodeId: item.qr_code_id,
-        ipAddress: item.ip_address,
-        country: item.country,
-        city: item.city,
-        deviceType: item.device_type,
-        operatingSystem: item.operating_system,
-        userAgent: item.user_agent,
-        browser: item.browser,
-        scannedAt: item.scanned_at
-      }));
-    } catch (err) {
-      throw new Error(err instanceof Error ? err.message : 'Failed to fetch analytics');
-    }
-  };
-
-  const getQRAnalyticsSummary = async (qrCodeId: string): Promise<QRAnalyticsSummary> => {
-    try {
-      const { data, error } = await supabase
-        .from('qr_analytics')
-        .select('*')
-        .eq('qr_code_id', qrCodeId);
-
-      if (error) throw error;
-
-      const analytics = data || [];
-      const now = new Date();
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-      const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-      // Calculate summary statistics
-      const totalScans = analytics.length;
-      const todayScans = analytics.filter(a => new Date(a.scanned_at) >= today).length;
-      const weekScans = analytics.filter(a => new Date(a.scanned_at) >= weekAgo).length;
-      const monthScans = analytics.filter(a => new Date(a.scanned_at) >= monthAgo).length;
-
-      // Top countries
-      const countryCount = analytics.reduce((acc, a) => {
-        if (a.country) {
-          acc[a.country] = (acc[a.country] || 0) + 1;
-        }
-        return acc;
-      }, {} as Record<string, number>);
-      const topCountries = Object.entries(countryCount)
-        .map(([country, count]) => ({ country, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 5);
-
-      // Top devices
-      const deviceCount = analytics.reduce((acc, a) => {
-        if (a.device_type) {
-          acc[a.device_type] = (acc[a.device_type] || 0) + 1;
-        }
-        return acc;
-      }, {} as Record<string, number>);
-      const topDevices = Object.entries(deviceCount)
-        .map(([device, count]) => ({ device, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 5);
-
-      // Top browsers
-      const browserCount = analytics.reduce((acc, a) => {
-        if (a.browser) {
-          acc[a.browser] = (acc[a.browser] || 0) + 1;
-        }
-        return acc;
-      }, {} as Record<string, number>);
-      const topBrowsers = Object.entries(browserCount)
-        .map(([browser, count]) => ({ browser, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 5);
-
-      // Scans by date (last 30 days)
-      const scansByDate: Array<{ date: string; scans: number }> = [];
-      for (let i = 29; i >= 0; i--) {
-        const date = new Date(today.getTime() - i * 24 * 60 * 60 * 1000);
-        const dateStr = date.toISOString().split('T')[0];
-        const scans = analytics.filter(a =>
-          a.scanned_at.startsWith(dateStr)
-        ).length;
-        scansByDate.push({
-          date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          scans
-        });
-      }
-
-      // Last scan time
-      const lastScanTime = analytics.length > 0
-        ? analytics.sort((a, b) => new Date(b.scanned_at).getTime() - new Date(a.scanned_at).getTime())[0].scanned_at
-        : undefined;
-
-      return {
-        totalScans,
-        todayScans,
-        weekScans,
-        monthScans,
-        topCountries,
-        topDevices,
-        topBrowsers,
-        scansByDate,
-        lastScanTime
-      };
-    } catch (err) {
-      throw new Error(err instanceof Error ? err.message : 'Failed to fetch analytics summary');
-    }
-  };
-
-  const updateQRCustomization = async (id: string, customization: QRCustomization) => {
-    try {
-      const { data, error } = await supabase
-        .from('qr_codes')
-        .update({ customization })
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      fetchQRCodes(page); // Refresh
-      return data;
-    } catch (err) {
-      throw new Error(err instanceof Error ? err.message : 'Failed to update QR customization');
-    }
-  };
-
-  const generateShortCode = (): string => {
-    return Math.random().toString(36).substring(2, 8).toLowerCase();
-  };
-
-  useEffect(() => {
-    fetchQRCodes(1);
-  }, []);
-
-  return {
+export const QRCodeManager: React.FC = () => {
+  const {
     qrCodes,
     loading,
-    error,
-    page,
-    totalPages,
-    hasMore,
-    fetchQRCodes,
     addQRCode,
     updateQRCode,
     deleteQRCode,
@@ -343,9 +33,486 @@ export const useQRCodes = () => {
     getQRAnalyticsSummary,
     updateQRCustomization,
     generateShortCode,
+    page,
+    totalPages,
+    hasMore,
+    fetchQRCodes,
     uploadLogo,
-    refetch: () => fetchQRCodes(page),
     searchQuery,
     statusFilter
+  } = useQRCodes();
+
+  const [localSearch, setLocalSearch] = useState('');
+
+  // Debounce search
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      // Only fetch if it's different to prevent loops/redundant calls
+      if (localSearch !== searchQuery) {
+        fetchQRCodes(1, localSearch, undefined);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [localSearch, searchQuery, fetchQRCodes]);
+
+  const [editingQR, setEditingQR] = useState<QRCode | null>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [showAnalytics, setShowAnalytics] = useState<string | null>(null);
+  const [analyticsSummary, setAnalyticsSummary] = useState<QRAnalyticsSummary | null>(null);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+  const [showCustomizer, setShowCustomizer] = useState<QRCode | null>(null);
+
+  const [qrForm, setQRForm] = useState({
+    name: '',
+    shortCode: '',
+    destinationUrl: '',
+    isActive: true
+  });
+
+  const handleAddQR = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await addQRCode(qrForm);
+      setQRForm({ name: '', shortCode: '', destinationUrl: '', isActive: true });
+      setShowAddForm(false);
+    } catch (error) {
+      console.error('Failed to add QR code:', error);
+    }
   };
+
+  const handleUpdateQR = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingQR) return;
+
+    try {
+      await updateQRCode(editingQR.id, {
+        name: editingQR.name,
+        shortCode: editingQR.shortCode,
+        destinationUrl: editingQR.destinationUrl,
+        isActive: editingQR.isActive
+      });
+      setEditingQR(null);
+    } catch (error) {
+      console.error('Failed to update QR code:', error);
+    }
+  };
+
+  const handleDeleteQR = async (id: string) => {
+    if (window.confirm('Are you sure you want to delete this QR code? This will also delete all associated analytics data.')) {
+      try {
+        await deleteQRCode(id);
+      } catch (error) {
+        console.error('Failed to delete QR code:', error);
+      }
+    }
+  };
+
+  const handleToggleActive = async (qr: QRCode) => {
+    try {
+      await updateQRCode(qr.id, { isActive: !qr.isActive });
+    } catch (error) {
+      console.error('Failed to toggle QR code status:', error);
+    }
+  };
+
+  const handleShowAnalytics = async (qrCodeId: string) => {
+    setLoadingAnalytics(true);
+    try {
+      const summary = await getQRAnalyticsSummary(qrCodeId);
+      setAnalyticsSummary(summary);
+      setShowAnalytics(qrCodeId);
+    } catch (error) {
+      console.error('Failed to load analytics:', error);
+    } finally {
+      setLoadingAnalytics(false);
+    }
+  };
+
+  const generateQRCodeImage = async (qr: QRCode, customization?: any): Promise<string> => {
+    const qrUrl = `${window.location.origin}/qr/${qr.shortCode}`;
+    const custom = customization || qr.customization || {
+      foregroundColor: '#000000',
+      backgroundColor: '#FFFFFF',
+      size: 200,
+      margin: 2
+    };
+
+    try {
+      return await QRCodeLib.toDataURL(qrUrl, {
+        width: custom.size || 200,
+        margin: custom.margin || 2,
+        color: {
+          dark: custom.foregroundColor || '#000000',
+          light: custom.backgroundColor || '#FFFFFF'
+        }
+      });
+    } catch (error) {
+      console.error('Failed to generate QR code:', error);
+      return '';
+    }
+  };
+
+  const downloadQRCode = async (qr: QRCode) => {
+    try {
+      const dataUrl = await generateQRCodeImage(qr, qr.customization);
+      const link = document.createElement('a');
+      link.download = `qr-${qr.shortCode}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (error) {
+      console.error('Failed to download QR code:', error);
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+  };
+
+  const handleCustomizeQR = (qr: QRCode) => {
+    setShowCustomizer(qr);
+  };
+
+  const handleSaveCustomization = async (qr: QRCode, customization: any) => {
+    try {
+      await updateQRCustomization(qr.id, customization);
+      setShowCustomizer(null);
+    } catch (error) {
+      console.error('Failed to save customization:', error);
+    }
+  };
+
+  return (
+    <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg p-4 md:p-6 border border-pink-100 mb-8">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-semibold text-gray-800 flex items-center">
+          <QrCode className="w-5 h-5 mr-2" />
+          QR Code Management
+        </h2>
+        <button
+          onClick={() => {
+            setQRForm({ ...qrForm, shortCode: generateShortCode() });
+            setShowAddForm(true);
+          }}
+          className="flex items-center space-x-1 md:space-x-2 px-3 md:px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-colors text-sm md:text-base"
+        >
+          <Plus size={16} />
+          <span className="hidden sm:inline">Create QR Code</span>
+          <span className="sm:hidden">Create</span>
+        </button>
+      </div>
+
+      {/* Search and Filters */}
+      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <input
+            type="text"
+            placeholder="Search QR codes..."
+            value={localSearch}
+            onChange={(e) => setLocalSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm"
+          />
+        </div>
+        <div className="flex items-center space-x-2">
+          <Filter className="text-gray-400 w-5 h-5" />
+          <select
+            value={statusFilter}
+            onChange={(e) => fetchQRCodes(1, undefined, e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-white"
+          >
+            <option value="all">All Status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Add QR Form */}
+      {
+        showAddForm && (
+          <div className="bg-pink-50 rounded-xl p-4 md:p-6 mb-6 border border-pink-200">
+            <form onSubmit={handleAddQR} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    QR Code Name
+                  </label>
+                  <input
+                    type="text"
+                    value={qrForm.name}
+                    onChange={(e) => setQRForm(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full px-3 md:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm md:text-base"
+                    placeholder="e.g., Website Link"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Short Code
+                  </label>
+                  <div className="flex space-x-2">
+                    <input
+                      type="text"
+                      value={qrForm.shortCode}
+                      onChange={(e) => setQRForm(prev => ({ ...prev, shortCode: e.target.value.toLowerCase() }))}
+                      className="flex-1 px-3 md:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm md:text-base"
+                      placeholder="abc123"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setQRForm(prev => ({ ...prev, shortCode: generateShortCode() }))}
+                      className="px-3 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors text-sm"
+                    >
+                      Generate
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Destination URL
+                </label>
+                <input
+                  type="url"
+                  value={qrForm.destinationUrl}
+                  onChange={(e) => setQRForm(prev => ({ ...prev, destinationUrl: e.target.value }))}
+                  className="w-full px-3 md:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm md:text-base"
+                  placeholder="https://example.com"
+                  required
+                />
+              </div>
+              <div className="flex items-center space-x-4">
+                <button
+                  type="submit"
+                  className="flex items-center space-x-1 md:space-x-2 px-3 md:px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-colors text-sm md:text-base"
+                >
+                  <Save size={16} />
+                  <span>Create QR Code</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAddForm(false)}
+                  className="px-3 md:px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors text-sm md:text-base"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        )
+      }
+
+      {/* QR Codes List */}
+      <div className="space-y-4">
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
+          </div>
+        ) : qrCodes.length === 0 ? (
+          <p className="text-gray-500 text-center py-8">No QR codes created yet.</p>
+        ) : (
+          <>
+            {qrCodes.map((qr) => (
+              <div
+                key={qr.id}
+                className="flex flex-col lg:flex-row lg:items-center justify-between p-3 md:p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-3 lg:space-y-0"
+              >
+                {editingQR?.id === qr.id ? (
+                  <form onSubmit={handleUpdateQR} className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                    <input
+                      type="text"
+                      value={editingQR.name}
+                      onChange={(e) => setEditingQR(prev => prev ? { ...prev, name: e.target.value } : null)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm"
+                      required
+                    />
+                    <input
+                      type="text"
+                      value={editingQR.shortCode}
+                      onChange={(e) => setEditingQR(prev => prev ? { ...prev, shortCode: e.target.value.toLowerCase() } : null)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm"
+                      required
+                    />
+                    <input
+                      type="url"
+                      value={editingQR.destinationUrl}
+                      onChange={(e) => setEditingQR(prev => prev ? { ...prev, destinationUrl: e.target.value } : null)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm"
+                      required
+                    />
+                    <div className="flex items-center space-x-2 sm:col-span-2 lg:col-span-3">
+                      <button
+                        type="submit"
+                        className="flex items-center space-x-1 px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm"
+                      >
+                        <Save size={14} />
+                        <span>Save</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingQR(null)}
+                        className="px-3 py-2 text-gray-600 hover:text-gray-800 transition-colors text-sm"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <>
+                    <div className="flex items-center space-x-3 md:space-x-4 flex-1 min-w-0">
+                      <div className="w-8 h-8 bg-pink-100 rounded-lg flex items-center justify-center">
+                        <QrCode className="w-5 h-5 text-pink-600" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-gray-800">{qr.name}</p>
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 text-xs md:text-sm text-gray-600">
+                          <span>/qr/{qr.shortCode}</span>
+                          <button
+                            onClick={() => copyToClipboard(`${window.location.origin}/qr/${qr.shortCode}`)}
+                            className="p-1 hover:bg-gray-200 rounded transition-colors self-start sm:self-auto"
+                            title="Copy QR URL"
+                          >
+                            <Copy size={12} />
+                          </button>
+                        </div>
+                        <p className="text-xs text-gray-500 truncate mt-1">{qr.destinationUrl}</p>
+                      </div>
+                      <span className={`px-2 py-1 rounded-full text-xs whitespace-nowrap ${qr.isActive
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-gray-100 text-gray-800'
+                        }`}>
+                        {qr.isActive ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-1 md:space-x-2 flex-shrink-0 mt-3 lg:mt-0">
+                      <button
+                        onClick={() => handleCustomizeQR(qr)}
+                        className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+                        title="Customize QR Code"
+                      >
+                        <Palette size={16} />
+                      </button>
+                      <button
+                        onClick={() => downloadQRCode(qr)}
+                        className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+                        title="Download QR Code"
+                      >
+                        <Download size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleShowAnalytics(qr.id)}
+                        className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+                        title="View Analytics"
+                      >
+                        <BarChart3 size={16} />
+                      </button>
+                      <button
+                        onClick={() => window.open(qr.destinationUrl, '_blank')}
+                        className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+                        title="Visit URL"
+                      >
+                        <ExternalLink size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleToggleActive(qr)}
+                        className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+                        title={qr.isActive ? 'Deactivate' : 'Activate'}
+                      >
+                        {qr.isActive ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                      <button
+                        onClick={() => setEditingQR(qr)}
+                        className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+                        title="Edit"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteQR(qr.id)}
+                        className="p-2 hover:bg-red-100 text-red-600 rounded-lg transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ))}
+
+            {/* Pagination Controls */}
+            <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+              <div className="text-sm text-gray-500">
+                Page {page} of {totalPages}
+              </div>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => fetchQRCodes(page - 1)}
+                  disabled={page === 1}
+                  className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={() => fetchQRCodes(page + 1)}
+                  disabled={!hasMore}
+                  className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Analytics Modal */}
+      {
+        showAnalytics && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
+              <div className="p-6 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <button
+                    onClick={() => setShowAnalytics(null)}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors ml-auto"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+              </div>
+              <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+                {loadingAnalytics ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
+                  </div>
+                ) : analyticsSummary ? (
+                  <QRAnalyticsDashboard
+                    summary={analyticsSummary}
+                    qrName={qrCodes.find(qr => qr.id === showAnalytics)?.name || 'QR Code'}
+                  />
+                ) : (
+                  <p className="text-gray-500 text-center py-8">Failed to load analytics data.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* QR Customizer Modal */}
+      {
+        showCustomizer && (
+          <QRCustomizer
+            qrUrl={`${window.location.origin}/qr/${showCustomizer.shortCode}`}
+            initialCustomization={showCustomizer.customization}
+            onSave={(customization) => handleSaveCustomization(showCustomizer, customization)}
+            onClose={() => setShowCustomizer(null)}
+            onUploadLogo={uploadLogo}
+          />
+        )
+      }
+    </div >
+  );
 };
