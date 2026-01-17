@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { AnalyticsService, DailyTrend, DeviceStat, LocationStat } from '../../services/analyticsService';
-import { DailyTrendChart, DevicePieChart, LocationBarChart } from './AnalyticsCharts';
+import { DailyTrendChart, DevicePieChart } from './AnalyticsCharts';
 import { RealTimeFeed } from './RealTimeFeed';
-import { BarChart2, Smartphone, Map, Activity } from 'lucide-react';
+import { GeospatialMap } from './GeospatialMap';
+import { BarChart2, Smartphone, Activity, Globe } from 'lucide-react';
 
 export const GlobalAnalyticsDashboard: React.FC = () => {
     const [trends, setTrends] = useState<DailyTrend[]>([]);
@@ -56,9 +57,30 @@ export const GlobalAnalyticsDashboard: React.FC = () => {
                 </div>
             </div>
 
+            {/* Top Row: Map & Realtime */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Main Trend Chart - Takes 2 columns */}
+                {/* Map - Takes 2 cols */}
                 <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                        <Globe className="text-indigo-500" size={20} />
+                        Global Activity Heatmap
+                    </h3>
+                    <GeospatialMap data={locations} />
+                </div>
+
+                {/* Feed - Takes 1 col */}
+                <div className="lg:col-span-1 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                        <Activity className="text-green-500" size={20} />
+                        Live Pulse
+                    </h3>
+                    <RealTimeFeed />
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Growth Chart */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                     <div className="flex items-center gap-2 mb-6">
                         <Activity className="text-pink-500" size={20} />
                         <h3 className="font-bold text-gray-800">Growth Velocity</h3>
@@ -66,13 +88,6 @@ export const GlobalAnalyticsDashboard: React.FC = () => {
                     <DailyTrendChart data={trends} />
                 </div>
 
-                {/* Real Time Feed - Takes 1 column */}
-                <div className="lg:col-span-1">
-                    <RealTimeFeed />
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Device Distribution */}
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                     <div className="flex items-center gap-2 mb-6">
@@ -92,15 +107,6 @@ export const GlobalAnalyticsDashboard: React.FC = () => {
                             ))}
                         </div>
                     </div>
-                </div>
-
-                {/* Top Locations */}
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                    <div className="flex items-center gap-2 mb-6">
-                        <Map className="text-blue-500" size={20} />
-                        <h3 className="font-bold text-gray-800">Top Geographies</h3>
-                    </div>
-                    <LocationBarChart data={locations} />
                 </div>
             </div>
         </div>
