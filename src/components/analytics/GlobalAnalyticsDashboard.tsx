@@ -3,7 +3,7 @@ import { AnalyticsService, DailyTrend, DeviceStat, LocationStat } from '../../se
 import { DailyTrendChart, DevicePieChart } from './AnalyticsCharts';
 import { RealTimeFeed } from './RealTimeFeed';
 import { GeospatialMap } from './GeospatialMap';
-import { BarChart2, Smartphone, Activity, Globe } from 'lucide-react';
+import { Smartphone, Activity, Globe } from 'lucide-react';
 
 export const GlobalAnalyticsDashboard: React.FC = () => {
     const [trends, setTrends] = useState<DailyTrend[]>([]);
