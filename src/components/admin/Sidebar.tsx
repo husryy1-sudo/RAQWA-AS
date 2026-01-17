@@ -1,3 +1,4 @@
+```
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
@@ -8,7 +9,8 @@ import {
     LogOut,
     Menu,
     X,
-    Share2
+    Share2,
+    BarChart2
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -23,6 +25,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
     const menuItems = [
         { icon: LayoutDashboard, label: 'Dashboard', path: '/admin' },
+        { icon: BarChart2, label: 'Analytics', path: '/admin/analytics' },
         { icon: QrCode, label: 'QR Codes', path: '/admin/qrcodes' },
         { icon: Share2, label: 'Social Bio', path: '/admin/social' },
         { icon: Settings, label: 'Settings', path: '/admin/settings' },
@@ -40,10 +43,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
             {/* Sidebar Container */}
             <div className={`
-        fixed top-0 left-0 h-full w-64 bg-slate-900 text-white shadow-xl z-50
-        transform transition-transform duration-300 ease-in-out
-        ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-      `}>
+        fixed top - 0 left - 0 h - full w - 64 bg - slate - 900 text - white shadow - xl z - 50
+        transform transition - transform duration - 300 ease -in -out
+        ${ isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0' }
+`}>
                 {/* Logo Area */}
                 <div className="flex items-center justify-between p-6 border-b border-slate-800">
                     <div className="flex items-center gap-2">
@@ -72,10 +75,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                                 key={item.path}
                                 to={item.path}
                                 onClick={() => window.innerWidth < 1024 && onClose()}
-                                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${isActive
-                                        ? 'bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-lg'
-                                        : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                                    }`}
+                                className={`flex items - center gap - 3 px - 4 py - 3 rounded - xl transition - all duration - 200 ${
+    isActive
+        ? 'bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-lg'
+        : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+} `}
                             >
                                 <item.icon size={20} />
                                 <span className="font-medium">{item.label}</span>
