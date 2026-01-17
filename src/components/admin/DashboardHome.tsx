@@ -22,3 +22,4 @@ export const DashboardHome: React.FC = () => {
         </div>
     );
 };
+
