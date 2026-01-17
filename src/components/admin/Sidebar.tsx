@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
     LayoutDashboard,
@@ -7,7 +7,6 @@ import {
     Users,
     Settings,
     LogOut,
-    Menu,
     X,
     Share2,
     BarChart2
@@ -76,8 +75,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                                 to={item.path}
                                 onClick={() => window.innerWidth < 1024 && onClose()}
                                 className={`flex items - center gap - 3 px - 4 py - 3 rounded - xl transition - all duration - 200 ${isActive
-                                        ? 'bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-lg'
-                                        : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                                    ? 'bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-lg'
+                                    : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                                     } `}
                             >
                                 <item.icon size={20} />
