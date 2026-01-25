@@ -10,55 +10,66 @@ export const GlobalAnalyticsDashboard: React.FC = () => {
     const [devices, setDevices] = useState<DeviceStat[]>([]);
     const [locations, setLocations] = useState<LocationStat[]>([]);
     const [loading, setLoading] = useState(true);
+    const [dateRange, setDateRange] = useState('7d');
+    const [isDemoMode, setIsDemoMode] = useState(false);
 
-    // Mock Data for immediate visual feedback
-    const mockTrends: DailyTrend[] = Array.from({ length: 7 }, (_, i) => ({
-        date: new Date(Date.now() - (6 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        scans: Math.floor(Math.random() * 50) + 10
-    }));
-
-    const mockDevices: DeviceStat[] = [
-        { device: 'iPhone', count: 120 },
-        { device: 'Android', count: 85 },
-        { device: 'Windows', count: 40 },
-        { device: 'Mac', count: 25 },
-        { device: 'Other', count: 10 }
-    ];
-
-    const mockLocations: LocationStat[] = [
-        { city: 'Riyadh', country: 'Saudi Arabia', count: 150 },
-        { city: 'Dubai', country: 'UAE', count: 80 },
-        { city: 'Cairo', country: 'Egypt', count: 60 },
-        { city: 'London', country: 'UK', count: 40 },
-        { city: 'New York', country: 'USA', count: 30 }
-    ];
+    // Dynamic Mock Data generator based on range
+    const getMockTrends = (days: number) => {
+        return Array.from({ length: days }, (_, i) => ({
+            date: new Date(Date.now() - (days - 1 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            scans: Math.floor(Math.random() * 50) + 10 + (Math.floor(Math.random() * 20))
+        }));
+    };
 
     useEffect(() => {
         const loadData = async () => {
+            setLoading(true);
             try {
+                // In a real scenario, we would pass dateRange to the service
                 const [trendData, deviceData, locationData] = await Promise.all([
-                    AnalyticsService.getDailyTrend(),
+                    AnalyticsService.getDailyTrend(), // Service would accept limit/range
                     AnalyticsService.getTopDevices(),
                     AnalyticsService.getTopLocations()
                 ]);
 
-                // Use real data if available, otherwise fallback to mock data
-                setTrends(trendData && trendData.length > 0 ? trendData : mockTrends);
-                setDevices(deviceData && deviceData.length > 0 ? deviceData : mockDevices);
-                setLocations(locationData && locationData.length > 0 ? locationData : mockLocations);
+                if (trendData && trendData.length > 0) {
+                    setTrends(trendData);
+                    setDevices(deviceData);
+                    setLocations(locationData);
+                    setIsDemoMode(false);
+                } else {
+                    throw new Error("No data available");
+                }
             } catch (error) {
-                console.error('Failed to load analytics:', error);
-                // Fallback on error
-                setTrends(mockTrends);
-                setDevices(mockDevices);
-                setLocations(mockLocations);
+                console.log('Using Mock Data (Demo Mode)');
+                setIsDemoMode(true);
+
+                // Generate mock data based on selection
+                const days = dateRange === '30d' ? 30 : dateRange === 'today' ? 1 : 7;
+                setTrends(getMockTrends(days));
+
+                setDevices([
+                    { device: 'iPhone', count: Math.floor(Math.random() * 100) + 50 },
+                    { device: 'Android', count: Math.floor(Math.random() * 100) + 40 },
+                    { device: 'Windows', count: Math.floor(Math.random() * 50) + 10 },
+                    { device: 'Mac', count: Math.floor(Math.random() * 30) + 5 },
+                    { device: 'Other', count: Math.floor(Math.random() * 20) }
+                ]);
+
+                setLocations([
+                    { city: 'Riyadh', country: 'Saudi Arabia', count: Math.floor(Math.random() * 200) + 50 },
+                    { city: 'Dubai', country: 'UAE', count: Math.floor(Math.random() * 150) + 40 },
+                    { city: 'Cairo', country: 'Egypt', count: Math.floor(Math.random() * 100) + 30 },
+                    { city: 'London', country: 'UK', count: Math.floor(Math.random() * 80) + 20 },
+                    { city: 'New York', country: 'USA', count: Math.floor(Math.random() * 60) + 10 }
+                ]);
             } finally {
                 setLoading(false);
             }
         };
 
         loadData();
-    }, []);
+    }, [dateRange]); // Reload when dateRange changes
 
     if (loading) {
         return (
@@ -70,16 +81,36 @@ export const GlobalAnalyticsDashboard: React.FC = () => {
 
     return (
         <div className="space-y-6">
+            {isDemoMode && (
+                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-lg">
+                    <div className="flex">
+                        <div className="flex-shrink-0">
+                            <Activity className="h-5 w-5 text-yellow-400" />
+                        </div>
+                        <div className="ml-3">
+                            <p className="text-sm text-yellow-700">
+                                <span className="font-bold">Demo Mode Active:</span> You are viewing simulated data.
+                                To see real analytics, please execute the provided SQL scripts in your Supabase dashboard.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-800">Analytics Intelligence</h2>
                     <p className="text-gray-500">Real-time insights across your QR ecosystem</p>
                 </div>
                 <div className="flex gap-2">
-                    <select className="px-4 py-2 border rounded-lg bg-white text-sm">
-                        <option>Last 30 Days</option>
-                        <option>Last 7 Days</option>
-                        <option>Today</option>
+                    <select
+                        value={dateRange}
+                        onChange={(e) => setDateRange(e.target.value)}
+                        className="px-4 py-2 border rounded-lg bg-white text-sm focus:ring-2 focus:ring-pink-500 outline-none"
+                    >
+                        <option value="30d">Last 30 Days</option>
+                        <option value="7d">Last 7 Days</option>
+                        <option value="today">Today</option>
                     </select>
                 </div>
             </div>
