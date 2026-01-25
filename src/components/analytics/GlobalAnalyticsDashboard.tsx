@@ -139,4 +139,3 @@ export const GlobalAnalyticsDashboard: React.FC = () => {
         </div>
     );
 };
-
